@@ -165,20 +165,45 @@ const CarGrid: React.FC<CarGridProps> = ({ filters }) => {
               </div>
 
               {/* Match Reasons */}
-              {car.matchReasons.length > 0 && (
+              {car.matchType !== 'no-filters' && (car.matchedReasons.length > 0 || car.notMatchedReasons.length > 0) && (
                 <div className="mt-3 pt-3 border-t border-gray-100">
-                  <p className="text-xs font-medium text-gray-700 mb-1">Match Details:</p>
-                  <ul className="text-xs text-gray-600 space-y-1">
-                    {car.matchReasons.slice(0, 3).map((reason, reasonIndex) => (
-                      <li key={reasonIndex} className="flex items-start">
-                        <span className="inline-block w-1 h-1 bg-gray-400 rounded-full mt-1.5 mr-2 flex-shrink-0"></span>
-                        {reason}
-                      </li>
-                    ))}
-                    {car.matchReasons.length > 3 && (
-                      <li className="text-gray-500">+ {car.matchReasons.length - 3} more</li>
-                    )}
-                  </ul>
+                  <p className="text-xs font-medium text-gray-700 mb-2">Match Details:</p>
+                  
+                  {/* Matched Reasons */}
+                  {car.matchedReasons.length > 0 && (
+                    <div className="mb-2">
+                      <p className="text-xs font-medium text-green-700 mb-1">✓ Matched:</p>
+                      <ul className="text-xs text-gray-600 space-y-1">
+                        {car.matchedReasons.slice(0, 3).map((reason, reasonIndex) => (
+                          <li key={reasonIndex} className="flex items-start">
+                            <span className="inline-block w-1 h-1 bg-green-500 rounded-full mt-1.5 mr-2 flex-shrink-0"></span>
+                            {reason}
+                          </li>
+                        ))}
+                        {car.matchedReasons.length > 3 && (
+                          <li className="text-gray-500">+ {car.matchedReasons.length - 3} more matched</li>
+                        )}
+                      </ul>
+                    </div>
+                  )}
+
+                  {/* Not Matched Reasons */}
+                  {car.notMatchedReasons.length > 0 && (
+                    <div>
+                      <p className="text-xs font-medium text-red-700 mb-1">✗ Not Matched:</p>
+                      <ul className="text-xs text-gray-600 space-y-1">
+                        {car.notMatchedReasons.slice(0, 3).map((reason, reasonIndex) => (
+                          <li key={reasonIndex} className="flex items-start">
+                            <span className="inline-block w-1 h-1 bg-red-500 rounded-full mt-1.5 mr-2 flex-shrink-0"></span>
+                            {reason}
+                          </li>
+                        ))}
+                        {car.notMatchedReasons.length > 3 && (
+                          <li className="text-gray-500">+ {car.notMatchedReasons.length - 3} more not matched</li>
+                        )}
+                      </ul>
+                    </div>
+                  )}
                 </div>
               )}
 
