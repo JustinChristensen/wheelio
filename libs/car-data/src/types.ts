@@ -26,7 +26,7 @@ export interface Car {
   mileage: number;
   fuelType: 'Gas' | 'Hybrid' | 'Electric';
   transmission: 'Manual' | 'Automatic' | 'CVT';
-  bodyType: 'Sedan' | 'SUV' | 'Hatchback' | 'Coupe' | 'Convertible' | 'Truck' | 'Wagon';
+  bodyType: 'Sedan' | 'SUV' | 'Hatchback' | 'Coupe' | 'Convertible' | 'Truck' | 'Wagon' | 'Minivan';
   drivetrain: 'FWD' | 'RWD' | 'AWD' | '4WD';
 }
 

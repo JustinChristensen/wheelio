@@ -107,7 +107,7 @@ export const mockCars: Car[] = [
     price: 115000,
     seats: 4,
     safetyRating: 4,
-    imageUrl: 'https://images.unsplash.com/photo-1544829099-b9a0c5303bea?w=800',
+    imageUrl: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800',
     dealershipId: 'dealership-2',
     features: [
       'Removable Doors/Roof',
@@ -131,7 +131,7 @@ export const mockCars: Car[] = [
     price: 52000,
     seats: 5,
     safetyRating: 5,
-    imageUrl: 'https://images.unsplash.com/photo-1549399810-162c4763a7ea?w=800',
+    imageUrl: 'https://images.unsplash.com/photo-1603584173870-7f23fdae1b7a?w=800',
     dealershipId: 'dealership-1',
     features: [
       'Drive Wise Safety Tech',
@@ -205,7 +205,7 @@ export const mockCars: Car[] = [
     seats: 5,
     safetyRating: 5,
     imageUrl:
-      'https://images.unsplash.com/photo-1606152421802-db97b6c92669?w=800',
+      'https://images.unsplash.com/photo-1600712242805-5f78671b24da?w=800',
     dealershipId: 'dealership-2',
     features: [
       'Toyota Safety Sense 2.0',
@@ -330,7 +330,7 @@ export const mockCars: Car[] = [
     seats: 5,
     safetyRating: 4,
     imageUrl:
-      'https://images.unsplash.com/photo-1594736797933-d0301ba2fe65?w=800',
+      'https://images.unsplash.com/photo-1609521263047-f8f205293f24?w=800',
     dealershipId: 'dealership-3',
     features: [
       'EyeSight Driver Assist',
@@ -427,7 +427,7 @@ export const mockCars: Car[] = [
     price: 58000,
     seats: 5,
     safetyRating: 4,
-    imageUrl: 'https://images.unsplash.com/photo-1558618047-3c8c76ca7d13?w=800',
+    imageUrl: 'https://images.unsplash.com/photo-1563720223185-11003d516935?w=800',
     dealershipId: 'dealership-2',
     features: [
       'Pro Power Onboard',
@@ -451,7 +451,7 @@ export const mockCars: Car[] = [
     price: 42000,
     seats: 6,
     safetyRating: 4,
-    imageUrl: 'https://images.unsplash.com/photo-1549399810-162c4763a7ea?w=800',
+    imageUrl: 'https://images.unsplash.com/photo-1544636331-e26879cd4d9b?w=800',
     dealershipId: 'dealership-3',
     features: [
       'Chevy Safety Assist',
@@ -574,7 +574,7 @@ export const mockCars: Car[] = [
     seats: 5,
     safetyRating: 5,
     imageUrl:
-      'https://images.unsplash.com/photo-1606152421802-db97b6c92669?w=800',
+      'https://images.unsplash.com/photo-1449965408869-eaa3f722e40d?w=800',
     dealershipId: 'dealership-2',
     features: [
       'EyeSight Driver Assist',
@@ -671,7 +671,7 @@ export const mockCars: Car[] = [
     price: 45000,
     seats: 6,
     safetyRating: 4,
-    imageUrl: 'https://images.unsplash.com/photo-1558618047-3c8c76ca7d13?w=800',
+    imageUrl: 'https://images.unsplash.com/photo-1592853625597-7d17be820d0c?w=800',
     dealershipId: 'dealership-3',
     features: [
       'Ford SYNC 4',
@@ -695,7 +695,7 @@ export const mockCars: Car[] = [
     price: 48000,
     seats: 6,
     safetyRating: 4,
-    imageUrl: 'https://images.unsplash.com/photo-1549399810-162c4763a7ea?w=800',
+    imageUrl: 'https://images.unsplash.com/photo-1551830820-330a71b99659?w=800',
     dealershipId: 'dealership-2',
     features: [
       'Chevy Safety Assist',
@@ -917,7 +917,7 @@ export const mockCars: Car[] = [
     seats: 5,
     safetyRating: 5,
     imageUrl:
-      'https://images.unsplash.com/photo-1606152421802-db97b6c92669?w=800',
+      'https://images.unsplash.com/photo-1502161254066-6c74afbf07aa?w=800',
     dealershipId: 'dealership-1',
     features: [
       'EyeSight Driver Assist',
@@ -1186,7 +1186,7 @@ export const mockCars: Car[] = [
     price: 32000,
     seats: 4,
     safetyRating: 4,
-    imageUrl: 'https://images.unsplash.com/photo-1544829099-b9a0c5303bea?w=800',
+    imageUrl: 'https://images.unsplash.com/photo-1493238792000-8113da705763?w=800',
     dealershipId: 'dealership-1',
     features: [
       'Honda Sensing',
