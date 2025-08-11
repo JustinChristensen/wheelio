@@ -1,5 +1,5 @@
-import React, { useMemo } from 'react';
-import { CarFilters, mockCars } from 'car-data';
+import React, { useMemo, useCallback } from 'react';
+import { CarFilters, mockCars, Car } from 'car-data';
 
 interface FilterSidebarProps {
   filters: CarFilters;
@@ -20,6 +20,61 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({ filters, onFiltersChange 
     
     return { makes, bodyTypes, fuelTypes, minPrice, maxPrice };
   }, []);
+
+  // Helper function to check if a car matches the given filters
+  const matchesFilters = useCallback((car: Car, filterSet: CarFilters) => {
+    // Price range
+    if (filterSet.priceMin !== undefined && car.price < filterSet.priceMin) return false;
+    if (filterSet.priceMax !== undefined && car.price > filterSet.priceMax) return false;
+    
+    // Year range
+    if (filterSet.yearMin !== undefined && car.year < filterSet.yearMin) return false;
+    if (filterSet.yearMax !== undefined && car.year > filterSet.yearMax) return false;
+    
+    // Make
+    if (filterSet.make && filterSet.make.length > 0 && !filterSet.make.includes(car.make)) return false;
+    
+    // Body type
+    if (filterSet.bodyType && filterSet.bodyType.length > 0 && !filterSet.bodyType.includes(car.bodyType)) return false;
+    
+    // Fuel type
+    if (filterSet.fuelType && filterSet.fuelType.length > 0 && !filterSet.fuelType.includes(car.fuelType)) return false;
+    
+    // Safety rating
+    if (filterSet.safetyRating !== undefined && car.safetyRating < filterSet.safetyRating) return false;
+    
+    return true;
+  }, []);
+
+  // Calculate counts for each filter option based on current filters
+  const getFilterCounts = useMemo(() => {
+    return {
+      makes: filterOptions.makes.map(make => ({
+        value: make,
+        count: mockCars.filter(car => {
+          // Apply all filters except the current make filter
+          const otherFilters = { ...filters, make: undefined };
+          return matchesFilters(car, otherFilters) && car.make === make;
+        }).length
+      })),
+      bodyTypes: filterOptions.bodyTypes.map(bodyType => ({
+        value: bodyType,
+        count: mockCars.filter(car => {
+          // Apply all filters except the current bodyType filter
+          const otherFilters = { ...filters, bodyType: undefined };
+          return matchesFilters(car, otherFilters) && car.bodyType === bodyType;
+        }).length
+      })),
+      fuelTypes: filterOptions.fuelTypes.map(fuelType => ({
+        value: fuelType,
+        count: mockCars.filter(car => {
+          // Apply all filters except the current fuelType filter
+          const otherFilters = { ...filters, fuelType: undefined };
+          return matchesFilters(car, otherFilters) && car.fuelType === fuelType;
+        }).length
+      }))
+    };
+  }, [filterOptions, filters, matchesFilters]);
 
   const formatPricePlaceholder = (price: number) => {
     return price.toString();
@@ -143,15 +198,18 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({ filters, onFiltersChange 
         <div className="space-y-3">
           <h3 className="text-sm font-medium text-gray-700">Make</h3>
           <div className="space-y-2">
-            {filterOptions.makes.map((make) => (
-              <label key={make} className="flex items-center">
-                <input
-                  type="checkbox"
-                  checked={(filters.make || []).includes(make)}
-                  onChange={(e) => handleMultiSelectChange('make', make, e.target.checked)}
-                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                />
-                <span className="ml-2 text-sm text-gray-700">{make}</span>
+            {getFilterCounts.makes.map(({ value: make, count }) => (
+              <label key={make} className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <input
+                    type="checkbox"
+                    checked={(filters.make || []).includes(make)}
+                    onChange={(e) => handleMultiSelectChange('make', make, e.target.checked)}
+                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  />
+                  <span className="ml-2 text-sm text-gray-700">{make}</span>
+                </div>
+                <span className="text-xs text-gray-500">({count})</span>
               </label>
             ))}
           </div>
@@ -161,15 +219,18 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({ filters, onFiltersChange 
         <div className="space-y-3">
           <h3 className="text-sm font-medium text-gray-700">Body Type</h3>
           <div className="space-y-2">
-            {filterOptions.bodyTypes.map((type) => (
-              <label key={type} className="flex items-center">
-                <input
-                  type="checkbox"
-                  checked={(filters.bodyType || []).includes(type)}
-                  onChange={(e) => handleMultiSelectChange('bodyType', type, e.target.checked)}
-                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                />
-                <span className="ml-2 text-sm text-gray-700">{type}</span>
+            {getFilterCounts.bodyTypes.map(({ value: type, count }) => (
+              <label key={type} className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <input
+                    type="checkbox"
+                    checked={(filters.bodyType || []).includes(type)}
+                    onChange={(e) => handleMultiSelectChange('bodyType', type, e.target.checked)}
+                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  />
+                  <span className="ml-2 text-sm text-gray-700">{type}</span>
+                </div>
+                <span className="text-xs text-gray-500">({count})</span>
               </label>
             ))}
           </div>
@@ -179,15 +240,18 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({ filters, onFiltersChange 
         <div className="space-y-3">
           <h3 className="text-sm font-medium text-gray-700">Fuel Type</h3>
           <div className="space-y-2">
-            {filterOptions.fuelTypes.map((fuel) => (
-              <label key={fuel} className="flex items-center">
-                <input
-                  type="checkbox"
-                  checked={(filters.fuelType || []).includes(fuel)}
-                  onChange={(e) => handleMultiSelectChange('fuelType', fuel, e.target.checked)}
-                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                />
-                <span className="ml-2 text-sm text-gray-700">{fuel}</span>
+            {getFilterCounts.fuelTypes.map(({ value: fuel, count }) => (
+              <label key={fuel} className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <input
+                    type="checkbox"
+                    checked={(filters.fuelType || []).includes(fuel)}
+                    onChange={(e) => handleMultiSelectChange('fuelType', fuel, e.target.checked)}
+                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  />
+                  <span className="ml-2 text-sm text-gray-700">{fuel}</span>
+                </div>
+                <span className="text-xs text-gray-500">({count})</span>
               </label>
             ))}
           </div>
