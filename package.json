@@ -11,11 +11,11 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.8.0",
-    "@nx/esbuild": "19.8.4",
+    "@nx/esbuild": "21.3.11",
     "@nx/eslint": "19.8.4",
     "@nx/eslint-plugin": "19.8.4",
     "@nx/jest": "19.8.4",
-    "@nx/js": "21.3.11",
+    "@nx/js": "^21.3.11",
     "@nx/node": "^19.8.4",
     "@nx/react": "^21.3.11",
     "@nx/vite": "21.3.11",

@@ -8,6 +8,10 @@ This is a demonstration system designed to showcase UI patterns and real-time co
 
 Development will proceed incrementally with step-by-step guidance rather than generating the complete application at once. AI agents should expect to implement specific features and components as directed.
 
+When instructed to use specific npm packages assume that I've already installed them.
+
+Do not worry about generating or running unit tests.
+
 The system consists of three main applications in an NX monorepo:
 
 - **`apps/shopper`** - React customer-facing app with faceted search and AI chat
