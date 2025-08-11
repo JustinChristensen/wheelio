@@ -1,19 +1,22 @@
 import React, { useMemo, useEffect } from 'react';
-import { CarFilters } from 'car-data';
-import { mockCars } from 'car-data';
+import { CarFilters, Car } from 'car-data';
 import { calculateCarRanks, sortCarsByRank } from '../../utils/carRanking';
 import { useFLIP } from '../../hooks/useFLIP';
+import LoadingSpinner from '../LoadingSpinner/LoadingSpinner';
 
 interface CarGridProps {
   filters: CarFilters;
+  cars: Car[];
+  loading?: boolean;
+  error?: string | null;
 }
 
-const CarGrid: React.FC<CarGridProps> = ({ filters }) => {
+const CarGrid: React.FC<CarGridProps> = ({ filters, cars, loading = false, error = null }) => {
   // Calculate car ranks with weighted scoring
   const rankedCars = useMemo(() => {
-    const ranks = calculateCarRanks(mockCars, filters);
+    const ranks = calculateCarRanks(cars, filters);
     return sortCarsByRank(ranks);
-  }, [filters]);
+  }, [cars, filters]);
 
   // Set up FLIP animations
   const { registerElement, captureFirst } = useFLIP(rankedCars, (car) => car.id);
@@ -74,6 +77,35 @@ const CarGrid: React.FC<CarGridProps> = ({ filters }) => {
   };
 
   const matchCounts = getMatchCounts();
+
+  // Show loading state
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <LoadingSpinner size="lg" text="Loading cars..." />
+      </div>
+    );
+  }
+
+  // Show error state
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <div className="text-center">
+          <div className="text-red-500 text-lg font-semibold mb-2">
+            Error loading cars
+          </div>
+          <p className="text-gray-600 mb-4">{error}</p>
+          <button 
+            onClick={() => window.location.reload()}
+            className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors"
+          >
+            Try Again
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6">

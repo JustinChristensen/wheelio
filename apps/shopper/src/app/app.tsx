@@ -5,10 +5,14 @@ import FilterSidebar from '../components/FilterSidebar/FilterSidebar';
 import CarGrid from '../components/CarGrid/CarGrid';
 import AISalesAgent from '../components/AISalesAgent/AISalesAgent';
 import { CarFilters } from 'car-data';
+import { useCarData } from '../hooks/useCarData';
 
 export function App() {
   const [filters, setFilters] = useState<CarFilters>({});
   const [isAIDrawerOpen, setIsAIDrawerOpen] = useState(true);
+  
+  // Fetch car data from API
+  const { cars, loading, error } = useCarData();
 
   return (
     <div className="h-screen bg-gray-50 flex flex-col">
@@ -24,12 +28,18 @@ export function App() {
                 <FilterSidebar 
                   filters={filters} 
                   onFiltersChange={setFilters}
+                  cars={cars}
                 />
               </div>
 
               {/* Car Grid - Scrollable Center */}
               <div className="flex-1 overflow-auto h-full">
-                <CarGrid filters={filters} />
+                <CarGrid 
+                  filters={filters} 
+                  cars={cars}
+                  loading={loading}
+                  error={error}
+                />
               </div>
 
               {/* AI Sales Agent Drawer */}

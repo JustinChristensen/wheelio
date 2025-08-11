@@ -1,25 +1,26 @@
 import React, { useMemo, useCallback } from 'react';
-import { CarFilters, mockCars, Car } from 'car-data';
+import { CarFilters, Car } from 'car-data';
 
 interface FilterSidebarProps {
   filters: CarFilters;
   onFiltersChange: (filters: CarFilters) => void;
+  cars: Car[];
 }
 
-const FilterSidebar: React.FC<FilterSidebarProps> = ({ filters, onFiltersChange }) => {
+const FilterSidebar: React.FC<FilterSidebarProps> = ({ filters, onFiltersChange, cars }) => {
   // Generate dynamic filter options from car data
   const filterOptions = useMemo(() => {
-    const makes = [...new Set(mockCars.map(car => car.make))].sort();
-    const bodyTypes = [...new Set(mockCars.map(car => car.bodyType))].sort();
-    const fuelTypes = [...new Set(mockCars.map(car => car.fuelType))].sort();
+    const makes = [...new Set(cars.map(car => car.make))].sort();
+    const bodyTypes = [...new Set(cars.map(car => car.bodyType))].sort();
+    const fuelTypes = [...new Set(cars.map(car => car.fuelType))].sort();
     
     // Calculate price range from actual data
-    const prices = mockCars.map(car => car.price);
-    const minPrice = Math.min(...prices);
-    const maxPrice = Math.max(...prices);
+    const prices = cars.map(car => car.price);
+    const minPrice = prices.length > 0 ? Math.min(...prices) : 0;
+    const maxPrice = prices.length > 0 ? Math.max(...prices) : 100000;
     
     return { makes, bodyTypes, fuelTypes, minPrice, maxPrice };
-  }, []);
+  }, [cars]);
 
   // Helper function to check if a car matches the given filters
   const matchesFilters = useCallback((car: Car, filterSet: CarFilters) => {
@@ -51,7 +52,7 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({ filters, onFiltersChange 
     return {
       makes: filterOptions.makes.map(make => ({
         value: make,
-        count: mockCars.filter(car => {
+        count: cars.filter(car => {
           // Apply all filters except the current make filter
           const otherFilters = { ...filters, make: undefined };
           return matchesFilters(car, otherFilters) && car.make === make;
@@ -59,7 +60,7 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({ filters, onFiltersChange 
       })),
       bodyTypes: filterOptions.bodyTypes.map(bodyType => ({
         value: bodyType,
-        count: mockCars.filter(car => {
+        count: cars.filter(car => {
           // Apply all filters except the current bodyType filter
           const otherFilters = { ...filters, bodyType: undefined };
           return matchesFilters(car, otherFilters) && car.bodyType === bodyType;
@@ -67,14 +68,14 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({ filters, onFiltersChange 
       })),
       fuelTypes: filterOptions.fuelTypes.map(fuelType => ({
         value: fuelType,
-        count: mockCars.filter(car => {
+        count: cars.filter(car => {
           // Apply all filters except the current fuelType filter
           const otherFilters = { ...filters, fuelType: undefined };
           return matchesFilters(car, otherFilters) && car.fuelType === fuelType;
         }).length
       }))
     };
-  }, [filterOptions, filters, matchesFilters]);
+  }, [filterOptions, filters, matchesFilters, cars]);
 
   const formatPricePlaceholder = (price: number) => {
     return price.toString();
