@@ -93,7 +93,7 @@ const CarGrid: React.FC<CarGridProps> = ({ filters }) => {
               <>
                 <span className="inline-flex items-center gap-1">
                   <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                  {matchCounts.perfect} Perfect
+                  {matchCounts.perfect} Match
                 </span>
                 <span className="inline-flex items-center gap-1">
                   <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
@@ -132,7 +132,7 @@ const CarGrid: React.FC<CarGridProps> = ({ filters }) => {
               {/* Match Badge */}
               {car.matchType !== 'no-filters' && (
                 <div className={`absolute top-3 right-3 px-2 py-1 rounded-full text-xs font-medium border ${getMatchBadgeColor(car.matchType)}`}>
-                  {car.matchType === 'perfect' ? 'Perfect Match' : 
+                  {car.matchType === 'perfect' ? 'Match' : 
                    car.matchType === 'partial' ? 'Partial Match' : 
                    'No Match'}
                 </div>

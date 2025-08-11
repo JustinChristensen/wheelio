@@ -143,7 +143,7 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({ filters, onFiltersChange 
         <div className="space-y-3">
           <h3 className="text-sm font-medium text-gray-700">Body Type</h3>
           <div className="space-y-2">
-            {['Sedan', 'SUV', 'Hatchback', 'Coupe', 'Convertible', 'Truck', 'Wagon'].map((type) => (
+            {['Sedan', 'SUV', 'Hatchback', 'Coupe', 'Truck', 'Wagon'].map((type) => (
               <label key={type} className="flex items-center">
                 <input
                   type="checkbox"
