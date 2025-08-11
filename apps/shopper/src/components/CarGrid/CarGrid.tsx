@@ -1,132 +1,27 @@
-import React, { useMemo } from 'react';
-import { CarFilters, Car, mockCars } from 'car-data';
+import React, { useMemo, useEffect } from 'react';
+import { CarFilters } from 'car-data';
+import { mockCars } from 'car-data';
+import { calculateCarRanks, sortCarsByRank } from '../../utils/carRanking';
+import { useFLIP } from '../../hooks/useFLIP';
 
 interface CarGridProps {
   filters: CarFilters;
 }
 
-interface CarWithMatch extends Car {
-  matchType: 'perfect' | 'partial' | 'non-match';
-  matchReasons: string[];
-}
-
 const CarGrid: React.FC<CarGridProps> = ({ filters }) => {
-  const carsWithMatches = useMemo(() => {
-    return mockCars.map((car): CarWithMatch => {
-      const reasons: string[] = [];
-      let matchType: 'perfect' | 'partial' | 'non-match' = 'perfect';
-      let hasAnyFilter = false;
-      let perfectMatches = 0;
-      let totalFilters = 0;
-
-      // Check price range
-      if (filters.priceMin !== undefined || filters.priceMax !== undefined) {
-        hasAnyFilter = true;
-        totalFilters++;
-        if (
-          (filters.priceMin === undefined || car.price >= filters.priceMin) &&
-          (filters.priceMax === undefined || car.price <= filters.priceMax)
-        ) {
-          perfectMatches++;
-          reasons.push(`Price $${car.price.toLocaleString()} matches range`);
-        } else {
-          reasons.push(`Price $${car.price.toLocaleString()} outside range`);
-        }
-      }
-
-      // Check year range
-      if (filters.yearMin !== undefined || filters.yearMax !== undefined) {
-        hasAnyFilter = true;
-        totalFilters++;
-        if (
-          (filters.yearMin === undefined || car.year >= filters.yearMin) &&
-          (filters.yearMax === undefined || car.year <= filters.yearMax)
-        ) {
-          perfectMatches++;
-          reasons.push(`${car.year} matches year range`);
-        } else {
-          reasons.push(`${car.year} outside year range`);
-        }
-      }
-
-      // Check make
-      if (filters.make && filters.make.length > 0) {
-        hasAnyFilter = true;
-        totalFilters++;
-        if (filters.make.includes(car.make)) {
-          perfectMatches++;
-          reasons.push(`${car.make} matches selected makes`);
-        } else {
-          reasons.push(`${car.make} not in selected makes`);
-        }
-      }
-
-      // Check body type
-      if (filters.bodyType && filters.bodyType.length > 0) {
-        hasAnyFilter = true;
-        totalFilters++;
-        if (filters.bodyType.includes(car.bodyType)) {
-          perfectMatches++;
-          reasons.push(`${car.bodyType} matches selected body types`);
-        } else {
-          reasons.push(`${car.bodyType} not in selected body types`);
-        }
-      }
-
-      // Check fuel type
-      if (filters.fuelType && filters.fuelType.length > 0) {
-        hasAnyFilter = true;
-        totalFilters++;
-        if (filters.fuelType.includes(car.fuelType)) {
-          perfectMatches++;
-          reasons.push(`${car.fuelType} matches selected fuel types`);
-        } else {
-          reasons.push(`${car.fuelType} not in selected fuel types`);
-        }
-      }
-
-      // Check safety rating
-      if (filters.safetyRating !== undefined) {
-        hasAnyFilter = true;
-        totalFilters++;
-        if (car.safetyRating >= filters.safetyRating) {
-          perfectMatches++;
-          reasons.push(`${car.safetyRating}-star safety rating meets minimum`);
-        } else {
-          reasons.push(`${car.safetyRating}-star safety rating below minimum`);
-        }
-      }
-
-      // Determine match type
-      if (!hasAnyFilter) {
-        matchType = 'perfect';
-        reasons.push('No filters applied');
-      } else if (perfectMatches === totalFilters) {
-        matchType = 'perfect';
-      } else if (perfectMatches > 0) {
-        matchType = 'partial';
-      } else {
-        matchType = 'non-match';
-      }
-
-      return {
-        ...car,
-        matchType,
-        matchReasons: reasons,
-      };
-    });
+  // Calculate car ranks with weighted scoring
+  const rankedCars = useMemo(() => {
+    const ranks = calculateCarRanks(mockCars, filters);
+    return sortCarsByRank(ranks);
   }, [filters]);
 
-  // Sort cars by match type and then by price
-  const sortedCars = useMemo(() => {
-    return [...carsWithMatches].sort((a, b) => {
-      const matchOrder = { 'perfect': 0, 'partial': 1, 'non-match': 2 };
-      if (matchOrder[a.matchType] !== matchOrder[b.matchType]) {
-        return matchOrder[a.matchType] - matchOrder[b.matchType];
-      }
-      return a.price - b.price;
-    });
-  }, [carsWithMatches]);
+  // Set up FLIP animations
+  const { registerElement, captureFirst } = useFLIP(rankedCars, (car) => car.id);
+
+  // Capture first state before filters change
+  useEffect(() => {
+    captureFirst();
+  }, [filters, captureFirst]);
 
   const getMatchBadgeColor = (matchType: string) => {
     switch (matchType) {
@@ -136,8 +31,25 @@ const CarGrid: React.FC<CarGridProps> = ({ filters }) => {
         return 'bg-yellow-100 text-yellow-800 border-yellow-200';
       case 'non-match':
         return 'bg-red-100 text-red-800 border-red-200';
+      case 'no-filters':
+        return 'bg-gray-100 text-gray-800 border-gray-200';
       default:
         return 'bg-gray-100 text-gray-800 border-gray-200';
+    }
+  };
+
+  const getCardOpacity = (matchType: string) => {
+    switch (matchType) {
+      case 'perfect':
+        return 'opacity-100';
+      case 'partial':
+        return 'opacity-75';
+      case 'non-match':
+        return 'opacity-60';
+      case 'no-filters':
+        return 'opacity-100';
+      default:
+        return 'opacity-100';
     }
   };
 
@@ -150,23 +62,65 @@ const CarGrid: React.FC<CarGridProps> = ({ filters }) => {
     }).format(price);
   };
 
+  const getMatchCounts = () => {
+    const counts = rankedCars.reduce(
+      (acc, car) => {
+        acc[car.matchType]++;
+        return acc;
+      },
+      { perfect: 0, partial: 0, 'non-match': 0, 'no-filters': 0 }
+    );
+    return counts;
+  };
+
+  const matchCounts = getMatchCounts();
+
   return (
     <div className="p-6">
       <div className="mb-6">
         <h2 className="text-xl font-semibold text-gray-900">
-          Available Cars ({sortedCars.length})
+          Available Cars ({rankedCars.length})
         </h2>
-        <p className="text-sm text-gray-600 mt-1">
-          Cars are ranked by match quality: perfect matches first, then partial matches
-        </p>
+        <div className="flex items-center gap-4 text-sm text-gray-600 mt-2">
+          <span>Cars ranked by match quality and weighted filters</span>
+          <div className="flex gap-3">
+            {matchCounts['no-filters'] > 0 ? (
+              <span className="inline-flex items-center gap-1">
+                <div className="w-2 h-2 bg-gray-500 rounded-full"></div>
+                {matchCounts['no-filters']} All Cars
+              </span>
+            ) : (
+              <>
+                <span className="inline-flex items-center gap-1">
+                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                  {matchCounts.perfect} Perfect
+                </span>
+                <span className="inline-flex items-center gap-1">
+                  <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
+                  {matchCounts.partial} Partial
+                </span>
+                <span className="inline-flex items-center gap-1">
+                  <div className="w-2 h-2 bg-red-500 rounded-full"></div>
+                  {matchCounts['non-match']} No Match
+                </span>
+              </>
+            )}
+          </div>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-        {sortedCars.map((car) => (
+        {rankedCars.map((car, index) => (
           <div
             key={car.id}
-            className="bg-white rounded-lg shadow-md border border-gray-200 overflow-hidden hover:shadow-lg transition-shadow"
+            ref={(el) => registerElement(car.id, el)}
+            className={`bg-white rounded-lg shadow-md border border-gray-200 overflow-hidden hover:shadow-lg transition-all relative ${getCardOpacity(car.matchType)}`}
           >
+            {/* Rank Badge */}
+            <div className="absolute top-3 left-3 bg-blue-600 text-white px-2 py-1 rounded-full text-xs font-medium z-10">
+              #{index + 1}
+            </div>
+
             {/* Car Image */}
             <div className="aspect-video bg-gray-200 relative">
               <img
@@ -176,11 +130,13 @@ const CarGrid: React.FC<CarGridProps> = ({ filters }) => {
               />
               
               {/* Match Badge */}
-              <div className={`absolute top-3 right-3 px-2 py-1 rounded-full text-xs font-medium border ${getMatchBadgeColor(car.matchType)}`}>
-                {car.matchType === 'perfect' ? 'Perfect Match' : 
-                 car.matchType === 'partial' ? 'Partial Match' : 
-                 'No Match'}
-              </div>
+              {car.matchType !== 'no-filters' && (
+                <div className={`absolute top-3 right-3 px-2 py-1 rounded-full text-xs font-medium border ${getMatchBadgeColor(car.matchType)}`}>
+                  {car.matchType === 'perfect' ? 'Perfect Match' : 
+                   car.matchType === 'partial' ? 'Partial Match' : 
+                   'No Match'}
+                </div>
+              )}
             </div>
 
             {/* Car Details */}
@@ -218,8 +174,8 @@ const CarGrid: React.FC<CarGridProps> = ({ filters }) => {
                 <div className="mt-3 pt-3 border-t border-gray-100">
                   <p className="text-xs font-medium text-gray-700 mb-1">Match Details:</p>
                   <ul className="text-xs text-gray-600 space-y-1">
-                    {car.matchReasons.slice(0, 3).map((reason, index) => (
-                      <li key={index} className="flex items-start">
+                    {car.matchReasons.slice(0, 3).map((reason, reasonIndex) => (
+                      <li key={reasonIndex} className="flex items-start">
                         <span className="inline-block w-1 h-1 bg-gray-400 rounded-full mt-1.5 mr-2 flex-shrink-0"></span>
                         {reason}
                       </li>
@@ -240,9 +196,9 @@ const CarGrid: React.FC<CarGridProps> = ({ filters }) => {
         ))}
       </div>
 
-      {sortedCars.length === 0 && (
+      {rankedCars.length === 0 && (
         <div className="text-center py-12">
-          <p className="text-gray-500 text-lg">No cars found matching your criteria</p>
+          <p className="text-gray-500 text-lg">No cars found</p>
           <p className="text-gray-400 text-sm mt-2">Try adjusting your filters</p>
         </div>
       )}

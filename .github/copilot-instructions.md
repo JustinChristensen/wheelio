@@ -1,5 +1,21 @@
 # Wheelio - AI-Powered Car Dealership Platform
 
+## What We've Done So Far
+
+1. **Created Sample Car Data** - Generated comprehensive mock data in `libs/car-data` including:
+   - 50 sample cars across multiple dealerships with realistic specifications
+   - Car types include sedans, SUVs, trucks, hatchbacks, and coupes 
+   - Brands: Tesla, BMW, Mercedes-Benz, Audi, Ford, Toyota, Honda, and more
+   - Complete TypeScript interfaces for Car, Dealership, and CarFilters types
+
+2. **Built Initial Shopper UI Structure** - Implemented the main layout in `apps/shopper` with:
+   - Fixed global header with "Wheelio" branding
+   - Three-column layout: FilterSidebar (left), CarGrid (center), AISalesAgent drawer (right)
+   - Proper scrolling behavior for all sections within fixed viewport height
+   - Car matching algorithm with perfect/partial/non-match ranking system
+   - AI chat interface with collapsible drawer (starts open)
+   - Filter synchronization between sidebar and AI chat components
+
 ## Project Overview
 
 Wheelio is a multi-dealership car shopping platform with AI-powered search and real-time sales collaboration being built from the ground up. This document describes the target architecture and implementation goals to guide AI agents in developing the system.
