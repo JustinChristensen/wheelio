@@ -173,9 +173,6 @@ const CarGrid: React.FC<CarGridProps> = ({ filters }) => {
                 src={car.imageUrl}
                 alt={`${car.year} ${car.make} ${car.model}`}
                 className="w-full h-full object-cover"
-                onError={(e) => {
-                  (e.target as HTMLImageElement).src = 'https://via.placeholder.com/400x225/e5e7eb/6b7280?text=Car+Image';
-                }}
               />
               
               {/* Match Badge */}

@@ -1,6 +1,13 @@
 import React, { useState } from 'react';
 import { CarFilters } from 'car-data';
 
+interface Message {
+  id: string;
+  type: 'ai' | 'user';
+  content: string;
+  timestamp: Date;
+}
+
 interface AISalesAgentProps {
   isOpen: boolean;
   onToggle: () => void;
@@ -8,10 +15,10 @@ interface AISalesAgentProps {
 }
 
 const AISalesAgent: React.FC<AISalesAgentProps> = ({ isOpen, onToggle, onFiltersUpdate }) => {
-  const [messages, setMessages] = useState([
+  const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
-      type: 'ai' as const,
+      type: 'ai',
       content: "Hi! I'm your AI sales assistant. I can help you find the perfect car by asking about your preferences. What kind of car are you looking for today?",
       timestamp: new Date(),
     },
@@ -22,9 +29,9 @@ const AISalesAgent: React.FC<AISalesAgentProps> = ({ isOpen, onToggle, onFilters
   const handleSendMessage = async () => {
     if (!inputMessage.trim()) return;
 
-    const userMessage = {
+    const userMessage: Message = {
       id: Date.now().toString(),
-      type: 'user' as const,
+      type: 'user',
       content: inputMessage,
       timestamp: new Date(),
     };
@@ -35,9 +42,9 @@ const AISalesAgent: React.FC<AISalesAgentProps> = ({ isOpen, onToggle, onFilters
 
     // Simulate AI response (this will be replaced with actual AI integration)
     setTimeout(() => {
-      const aiResponse = {
+      const aiResponse: Message = {
         id: (Date.now() + 1).toString(),
-        type: 'ai' as const,
+        type: 'ai',
         content: "I understand you're looking for a car. Based on what you've told me, let me update your search filters to show you the most relevant options. I'll help you narrow down your choices.",
         timestamp: new Date(),
       };
@@ -108,7 +115,7 @@ const AISalesAgent: React.FC<AISalesAgentProps> = ({ isOpen, onToggle, onFilters
       {isOpen && (
         <>
           {/* Messages */}
-          <div className="flex-1 overflow-auto p-4 space-y-4">
+          <div className="flex-1 overflow-auto p-4 space-y-4 min-h-0">
             {messages.map((message) => (
               <div
                 key={message.id}

@@ -43,13 +43,17 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({ filters, onFiltersChange 
   };
 
   return (
-    <div className="h-full overflow-auto p-6">
-      <div className="space-y-6">
-        <div>
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">
-            Filter Cars
-          </h2>
-        </div>
+    <div className="h-full flex flex-col">
+      {/* Fixed Header */}
+      <div className="p-6 border-b border-gray-200 bg-white flex-shrink-0">
+        <h2 className="text-lg font-semibold text-gray-900">
+          Filter Cars
+        </h2>
+      </div>
+
+      {/* Scrollable Content */}
+      <div className="flex-1 overflow-auto p-6">
+        <div className="space-y-6">
 
         {/* Price Range */}
         <div className="space-y-3">
@@ -199,6 +203,7 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({ filters, onFiltersChange 
           >
             Clear All Filters
           </button>
+        </div>
         </div>
       </div>
     </div>

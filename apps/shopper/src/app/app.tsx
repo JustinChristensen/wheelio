@@ -11,16 +11,16 @@ export function App() {
   const [isAIDrawerOpen, setIsAIDrawerOpen] = useState(true);
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
+    <div className="h-screen bg-gray-50 flex flex-col">
       <Header />
       
       <Routes>
         <Route
           path="/"
           element={
-            <main className="flex-1 flex overflow-hidden">
+            <main className="flex-1 flex overflow-hidden h-full">
               {/* Filter Sidebar */}
-              <div className="w-80 bg-white border-r border-gray-200 flex-shrink-0">
+              <div className="w-80 bg-white border-r border-gray-200 flex-shrink-0 h-full">
                 <FilterSidebar 
                   filters={filters} 
                   onFiltersChange={setFilters}
@@ -28,14 +28,14 @@ export function App() {
               </div>
 
               {/* Car Grid - Scrollable Center */}
-              <div className="flex-1 overflow-auto">
+              <div className="flex-1 overflow-auto h-full">
                 <CarGrid filters={filters} />
               </div>
 
               {/* AI Sales Agent Drawer */}
               <div className={`bg-white border-l border-gray-200 transition-all duration-300 ease-in-out ${
                 isAIDrawerOpen ? 'w-96' : 'w-0'
-              } flex-shrink-0 overflow-hidden`}>
+              } flex-shrink-0 overflow-hidden h-full`}>
                 <AISalesAgent 
                   isOpen={isAIDrawerOpen}
                   onToggle={() => setIsAIDrawerOpen(!isAIDrawerOpen)}
