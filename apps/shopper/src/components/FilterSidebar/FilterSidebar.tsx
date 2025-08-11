@@ -1,5 +1,5 @@
-import React from 'react';
-import { CarFilters } from 'car-data';
+import React, { useMemo } from 'react';
+import { CarFilters, mockCars } from 'car-data';
 
 interface FilterSidebarProps {
   filters: CarFilters;
@@ -7,6 +7,24 @@ interface FilterSidebarProps {
 }
 
 const FilterSidebar: React.FC<FilterSidebarProps> = ({ filters, onFiltersChange }) => {
+  // Generate dynamic filter options from car data
+  const filterOptions = useMemo(() => {
+    const makes = [...new Set(mockCars.map(car => car.make))].sort();
+    const bodyTypes = [...new Set(mockCars.map(car => car.bodyType))].sort();
+    const fuelTypes = [...new Set(mockCars.map(car => car.fuelType))].sort();
+    
+    // Calculate price range from actual data
+    const prices = mockCars.map(car => car.price);
+    const minPrice = Math.min(...prices);
+    const maxPrice = Math.max(...prices);
+    
+    return { makes, bodyTypes, fuelTypes, minPrice, maxPrice };
+  }, []);
+
+  const formatPricePlaceholder = (price: number) => {
+    return price.toString();
+  };
+
   const handlePriceRangeChange = (min: number | undefined, max: number | undefined) => {
     onFiltersChange({
       ...filters,
@@ -63,7 +81,7 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({ filters, onFiltersChange 
               <label className="block text-xs text-gray-500 mb-1">Min</label>
               <input
                 type="number"
-                placeholder="$0"
+                placeholder={formatPricePlaceholder(filterOptions.minPrice)}
                 value={filters.priceMin || ''}
                 onChange={(e) => handlePriceRangeChange(
                   e.target.value ? parseInt(e.target.value) : undefined,
@@ -76,7 +94,7 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({ filters, onFiltersChange 
               <label className="block text-xs text-gray-500 mb-1">Max</label>
               <input
                 type="number"
-                placeholder="$100,000"
+                placeholder={formatPricePlaceholder(filterOptions.maxPrice)}
                 value={filters.priceMax || ''}
                 onChange={(e) => handlePriceRangeChange(
                   filters.priceMin,
@@ -125,7 +143,7 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({ filters, onFiltersChange 
         <div className="space-y-3">
           <h3 className="text-sm font-medium text-gray-700">Make</h3>
           <div className="space-y-2">
-            {['Toyota', 'Honda', 'Ford', 'BMW', 'Mercedes-Benz', 'Audi'].map((make) => (
+            {filterOptions.makes.map((make) => (
               <label key={make} className="flex items-center">
                 <input
                   type="checkbox"
@@ -143,7 +161,7 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({ filters, onFiltersChange 
         <div className="space-y-3">
           <h3 className="text-sm font-medium text-gray-700">Body Type</h3>
           <div className="space-y-2">
-            {['Sedan', 'SUV', 'Hatchback', 'Coupe', 'Truck', 'Wagon'].map((type) => (
+            {filterOptions.bodyTypes.map((type) => (
               <label key={type} className="flex items-center">
                 <input
                   type="checkbox"
@@ -161,7 +179,7 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({ filters, onFiltersChange 
         <div className="space-y-3">
           <h3 className="text-sm font-medium text-gray-700">Fuel Type</h3>
           <div className="space-y-2">
-            {['Gas', 'Hybrid', 'Electric'].map((fuel) => (
+            {filterOptions.fuelTypes.map((fuel) => (
               <label key={fuel} className="flex items-center">
                 <input
                   type="checkbox"
