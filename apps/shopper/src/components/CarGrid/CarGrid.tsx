@@ -116,11 +116,6 @@ const CarGrid: React.FC<CarGridProps> = ({ filters }) => {
             ref={(el) => registerElement(car.id, el)}
             className={`bg-white rounded-lg shadow-md border border-gray-200 overflow-hidden hover:shadow-lg transition-all relative ${getCardOpacity(car.matchType)}`}
           >
-            {/* Rank Badge */}
-            <div className="absolute top-3 left-3 bg-blue-600 text-white px-2 py-1 rounded-full text-xs font-medium z-10">
-              #{index + 1}
-            </div>
-
             {/* Car Image */}
             <div className="aspect-video bg-gray-200 relative">
               <img
