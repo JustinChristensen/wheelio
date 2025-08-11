@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { CarFilters } from 'car-data';
+import { ApiService } from '../../services/api';
 
 interface Message {
   id: string;
@@ -25,6 +26,7 @@ const AISalesAgent: React.FC<AISalesAgentProps> = ({ isOpen, onToggle, onFilters
   ]);
   const [inputMessage, setInputMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [conversationId, setConversationId] = useState<string | undefined>();
 
   const handleSendMessage = async () => {
     if (!inputMessage.trim()) return;
@@ -37,31 +39,47 @@ const AISalesAgent: React.FC<AISalesAgentProps> = ({ isOpen, onToggle, onFilters
     };
 
     setMessages(prev => [...prev, userMessage]);
+    const currentInput = inputMessage;
     setInputMessage('');
     setIsLoading(true);
 
-    // Simulate AI response (this will be replaced with actual AI integration)
-    setTimeout(() => {
+    try {
+      const response = await ApiService.sendChatMessage({
+        message: currentInput,
+        conversationId,
+      });
+
       const aiResponse: Message = {
         id: (Date.now() + 1).toString(),
         type: 'ai',
-        content: "I understand you're looking for a car. Based on what you've told me, let me update your search filters to show you the most relevant options. I'll help you narrow down your choices.",
+        content: response.response,
         timestamp: new Date(),
       };
       
       setMessages(prev => [...prev, aiResponse]);
-      setIsLoading(false);
+      setConversationId(response.conversationId);
 
       // Example of AI updating filters based on user input
       // This would be more sophisticated in a real implementation
-      if (inputMessage.toLowerCase().includes('suv')) {
+      if (currentInput.toLowerCase().includes('suv')) {
         onFiltersUpdate({ bodyType: ['SUV'] });
-      } else if (inputMessage.toLowerCase().includes('sedan')) {
+      } else if (currentInput.toLowerCase().includes('sedan')) {
         onFiltersUpdate({ bodyType: ['Sedan'] });
-      } else if (inputMessage.toLowerCase().includes('electric')) {
+      } else if (currentInput.toLowerCase().includes('electric')) {
         onFiltersUpdate({ fuelType: ['Electric'] });
       }
-    }, 1500);
+    } catch (error) {
+      console.error('Failed to send message:', error);
+      const errorMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        type: 'ai',
+        content: "I'm sorry, I'm having trouble connecting right now. Please try again in a moment.",
+        timestamp: new Date(),
+      };
+      setMessages(prev => [...prev, errorMessage]);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {

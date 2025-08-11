@@ -8,3 +8,6 @@ vitest.config.*.timestamp*
 node_modules
 dist
 tmp
+
+# Environment files
+env/*.local

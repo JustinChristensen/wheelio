@@ -16,6 +16,13 @@
    - AI chat interface with collapsible drawer (starts open)
    - Filter synchronization between sidebar and AI chat components
 
+3. **Set Up AI Sales Agent Backend** - Integrated LangGraph with OpenAI in `apps/server`:
+   - Environment variables configured with dotenv-flow in `/env` directory
+   - Chat endpoint at `/api/chat` using createReactAgent from LangGraph
+   - OpenAI GPT-3.5-turbo integration for natural language processing
+   - Conversation persistence with unique conversation IDs
+   - Frontend integration through Vite proxy configuration
+
 ## Project Overview
 
 Wheelio is a multi-dealership car shopping platform with AI-powered search and real-time sales collaboration being built from the ground up. This document describes the target architecture and implementation goals to guide AI agents in developing the system.
@@ -84,6 +91,7 @@ apps/shopper/src/
 
 ### Backend Integration
 - **Fastify Server**: RESTful APIs + WebSocket + WebRTC signaling in `apps/server`
+- **API Proxy**: Frontend apps use Vite's proxy configuration to route API calls to the backend server, eliminating CORS issues
 - **Call Queue Management**: Real-time updates via WebSocket to sales dashboard
 - **WebRTC Orchestration**: Offer/answer exchange for audio connections
 - **Y.js Backend**: In-memory collaborative document management via WebSockets (no persistence)
