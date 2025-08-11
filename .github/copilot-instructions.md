@@ -18,6 +18,8 @@ The system consists of three main applications in an NX monorepo:
 - **`apps/sales`** - React sales dashboard with call queue and collaboration tools  
 - **`apps/server`** - Fastify backend handling WebRTC, WebSockets, and Y.js collaboration
 
+**Note**: All shared libraries are organized in the `libs/` directory (e.g., `libs/car-data` for mock data and types).
+
 ## Architecture & Data Flow
 
 ### Core User Journey

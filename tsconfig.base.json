@@ -15,7 +15,7 @@
     "skipDefaultLibCheck": true,
     "baseUrl": ".",
     "paths": {
-      "shared-data": ["shared-data/src/index.ts"]
+      "car-data": ["libs/car-data/src/index.ts"]
     }
   },
   "exclude": ["node_modules", "tmp"]
