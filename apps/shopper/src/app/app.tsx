@@ -35,7 +35,7 @@ export function App() {
               {/* AI Sales Agent Drawer */}
               <div className={`bg-white border-l border-gray-200 transition-all duration-300 ease-in-out ${
                 isAIDrawerOpen ? 'w-96' : 'w-0'
-              } flex-shrink-0 overflow-hidden h-full`}>
+              } flex-shrink-0 h-full relative`}>
                 <AISalesAgent 
                   isOpen={isAIDrawerOpen}
                   onToggle={() => setIsAIDrawerOpen(!isAIDrawerOpen)}
