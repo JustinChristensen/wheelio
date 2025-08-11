@@ -1,48 +1,51 @@
-import NxWelcome from './nx-welcome';
-
-import { Route, Routes, Link } from 'react-router-dom';
+import { Route, Routes } from 'react-router-dom';
+import { useState } from 'react';
+import Header from '../components/Header/Header';
+import FilterSidebar from '../components/FilterSidebar/FilterSidebar';
+import CarGrid from '../components/CarGrid/CarGrid';
+import AISalesAgent from '../components/AISalesAgent/AISalesAgent';
+import { CarFilters } from 'car-data';
 
 export function App() {
-  return (
-    <div>
-      <NxWelcome title="shopper" />
+  const [filters, setFilters] = useState<CarFilters>({});
+  const [isAIDrawerOpen, setIsAIDrawerOpen] = useState(true);
 
-      {/* START: routes */}
-      {/* These routes and navigation have been generated for you */}
-      {/* Feel free to move and update them to fit your needs */}
-      <br />
-      <hr />
-      <br />
-      <div role="navigation">
-        <ul>
-          <li>
-            <Link to="/">Home</Link>
-          </li>
-          <li>
-            <Link to="/page-2">Page 2</Link>
-          </li>
-        </ul>
-      </div>
+  return (
+    <div className="min-h-screen bg-gray-50 flex flex-col">
+      <Header />
+      
       <Routes>
         <Route
           path="/"
           element={
-            <div>
-              This is the generated root route.{' '}
-              <Link to="/page-2">Click here for page 2.</Link>
-            </div>
-          }
-        />
-        <Route
-          path="/page-2"
-          element={
-            <div>
-              <Link to="/">Click here to go back to root page.</Link>
-            </div>
+            <main className="flex-1 flex overflow-hidden">
+              {/* Filter Sidebar */}
+              <div className="w-80 bg-white border-r border-gray-200 flex-shrink-0">
+                <FilterSidebar 
+                  filters={filters} 
+                  onFiltersChange={setFilters}
+                />
+              </div>
+
+              {/* Car Grid - Scrollable Center */}
+              <div className="flex-1 overflow-auto">
+                <CarGrid filters={filters} />
+              </div>
+
+              {/* AI Sales Agent Drawer */}
+              <div className={`bg-white border-l border-gray-200 transition-all duration-300 ease-in-out ${
+                isAIDrawerOpen ? 'w-96' : 'w-0'
+              } flex-shrink-0 overflow-hidden`}>
+                <AISalesAgent 
+                  isOpen={isAIDrawerOpen}
+                  onToggle={() => setIsAIDrawerOpen(!isAIDrawerOpen)}
+                  onFiltersUpdate={setFilters}
+                />
+              </div>
+            </main>
           }
         />
       </Routes>
-      {/* END: routes */}
     </div>
   );
 }
