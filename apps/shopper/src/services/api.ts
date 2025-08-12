@@ -1,4 +1,4 @@
-import { Car } from 'car-data';
+import { Car, CarFilters } from 'car-data';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
 
@@ -12,11 +12,13 @@ export interface ApiResponse<T> {
 export interface ChatRequest {
   message: string;
   conversationId?: string;
+  currentFilters?: CarFilters;
 }
 
 export interface ChatResponse {
   response: string;
   conversationId: string;
+  updatedFilters?: CarFilters;
 }
 
 export class ApiService {

@@ -50,6 +50,7 @@ export function App() {
                   isOpen={isAIDrawerOpen}
                   onToggle={() => setIsAIDrawerOpen(!isAIDrawerOpen)}
                   onFiltersUpdate={setFilters}
+                  currentFilters={filters}
                 />
               </div>
             </main>

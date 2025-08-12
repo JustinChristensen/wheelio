@@ -2,16 +2,21 @@ import { FastifyInstance } from 'fastify';
 import { ChatOpenAI } from '@langchain/openai';
 import { createReactAgent } from '@langchain/langgraph/prebuilt';
 import { MemorySaver } from '@langchain/langgraph';
-import { HumanMessage, AIMessage } from '@langchain/core/messages';
+import { HumanMessage, AIMessage, SystemMessage } from '@langchain/core/messages';
+import { CarFilters } from 'car-data';
+import { DynamicStructuredTool } from '@langchain/core/tools';
+import { z } from 'zod';
 
 interface ChatRequest {
   message: string;
   conversationId?: string;
+  currentFilters?: CarFilters;
 }
 
 interface ChatResponse {
   response: string;
   conversationId: string;
+  updatedFilters?: CarFilters;
 }
 
 interface ErrorResponse {
@@ -20,6 +25,55 @@ interface ErrorResponse {
 }
 
 export default async function (fastify: FastifyInstance) {
+  // System prompt to keep the agent focused on car shopping
+  const SYSTEM_PROMPT = `You are an AI car sales assistant helping customers find their perfect vehicle. Your role is to:
+
+1. Understand the customer's car needs through natural conversation
+2. Translate their requirements into specific filter criteria
+3. Update the car search filters based on their preferences
+4. Provide helpful guidance on car features, makes, models, and options
+5. Keep the conversation focused on finding the right car for their needs
+
+When a customer mentions preferences like:
+- Budget ranges → Update priceMin/priceMax filters
+- Car types (sedan, SUV, etc.) → Update bodyType filter
+- Fuel preferences → Update fuelType filter
+- Safety requirements → Update safetyRating filter
+- Brand preferences → Update make filter
+- Seating needs → Update seats filter
+- Year preferences → Update yearMin/yearMax filters
+
+Always explain why you're adjusting the filters and ask clarifying questions to better understand their needs. Be friendly, knowledgeable, and focused on helping them find the perfect car.`;
+
+  // Create a tool for updating car filters
+  const updateFilters = new DynamicStructuredTool({
+    name: "update_car_filters",
+    description: "Update the car search filters based on customer preferences",
+    schema: z.object({
+      filters: z.object({
+        make: z.array(z.string()).optional(),
+        model: z.array(z.string()).optional(),
+        yearMin: z.number().optional(),
+        yearMax: z.number().optional(),
+        priceMin: z.number().optional(),
+        priceMax: z.number().optional(),
+        seats: z.array(z.number()).optional(),
+        safetyRating: z.number().optional(),
+        fuelType: z.array(z.string()).optional(),
+        transmission: z.array(z.string()).optional(),
+        bodyType: z.array(z.string()).optional(),
+        drivetrain: z.array(z.string()).optional(),
+        features: z.array(z.string()).optional(),
+        dealershipId: z.array(z.string()).optional(),
+      }),
+      reasoning: z.string().describe("Explanation of why these filters were applied based on the customer's request")
+    }),
+    func: async ({ filters, reasoning }) => {
+      // Store the filters in the conversation context
+      return `Updated car search filters: ${reasoning}. Filters applied: ${JSON.stringify(filters, null, 2)}`;
+    },
+  });
+
   // Initialize OpenAI
   const model = new ChatOpenAI({
     modelName: 'gpt-3.5-turbo',
@@ -30,10 +84,10 @@ export default async function (fastify: FastifyInstance) {
   // Create memory checkpointer for conversation persistence
   const memory = new MemorySaver();
 
-  // Create the React agent with memory
+  // Create the React agent with tools and memory
   const agent = createReactAgent({
     llm: model,
-    tools: [], // We'll add car-specific tools later
+    tools: [updateFilters],
     checkpointSaver: memory,
   });
 
@@ -42,7 +96,7 @@ export default async function (fastify: FastifyInstance) {
     Reply: ChatResponse | ErrorResponse 
   }>('/chat', async (request, reply) => {
     try {
-      const { message, conversationId } = request.body;
+      const { message, conversationId, currentFilters = {} } = request.body;
 
       if (!message) {
         return reply.code(400).send({ error: 'Message is required' });
@@ -58,24 +112,54 @@ export default async function (fastify: FastifyInstance) {
         },
       };
 
-      // Run the React agent with the user message
+      // Prepare messages with system prompt and current filter context
+      const messages = [
+        new SystemMessage(SYSTEM_PROMPT),
+        new HumanMessage(`Current car search filters: ${JSON.stringify(currentFilters, null, 2)}\n\nUser message: ${message}`)
+      ];
+
+      // Run the React agent with the user message and current filter context
       const result = await agent.invoke(
-        {
-          messages: [new HumanMessage(message)],
-        },
+        { messages },
         config
       );
 
-      // Get the AI response (last message should be from the AI)
+      // Extract the AI response and any filter updates from tool calls
       const aiResponse = result.messages[result.messages.length - 1];
       const responseContent = typeof aiResponse.content === 'string' 
         ? aiResponse.content 
         : JSON.stringify(aiResponse.content);
 
-      return reply.send({
+      // Look for filter updates in the conversation result
+      let updatedFilters: CarFilters | undefined;
+      
+      // Check if any tool calls were made that updated filters
+      for (const msg of result.messages) {
+        if (msg.additional_kwargs?.tool_calls) {
+          for (const toolCall of msg.additional_kwargs.tool_calls) {
+            if (toolCall.function?.name === 'update_car_filters') {
+              try {
+                const args = JSON.parse(toolCall.function.arguments);
+                updatedFilters = args.filters;
+              } catch (e) {
+                fastify.log.warn('Failed to parse tool call arguments:', e);
+              }
+            }
+          }
+        }
+      }
+
+      const response: ChatResponse = {
         response: responseContent,
         conversationId: id,
-      });
+      };
+
+      // Only include updatedFilters if they were actually changed
+      if (updatedFilters) {
+        response.updatedFilters = updatedFilters;
+      }
+
+      return reply.send(response);
     } catch (error) {
       fastify.log.error(error);
       return reply.code(500).send({ 

@@ -13,9 +13,10 @@ interface AISalesAgentProps {
   isOpen: boolean;
   onToggle: () => void;
   onFiltersUpdate: (filters: CarFilters) => void;
+  currentFilters: CarFilters;
 }
 
-const AISalesAgent: React.FC<AISalesAgentProps> = ({ isOpen, onToggle, onFiltersUpdate }) => {
+const AISalesAgent: React.FC<AISalesAgentProps> = ({ isOpen, onToggle, onFiltersUpdate, currentFilters }) => {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
@@ -47,6 +48,7 @@ const AISalesAgent: React.FC<AISalesAgentProps> = ({ isOpen, onToggle, onFilters
       const response = await ApiService.sendChatMessage({
         message: currentInput,
         conversationId,
+        currentFilters,
       });
 
       const aiResponse: Message = {
@@ -59,14 +61,9 @@ const AISalesAgent: React.FC<AISalesAgentProps> = ({ isOpen, onToggle, onFilters
       setMessages(prev => [...prev, aiResponse]);
       setConversationId(response.conversationId);
 
-      // Example of AI updating filters based on user input
-      // This would be more sophisticated in a real implementation
-      if (currentInput.toLowerCase().includes('suv')) {
-        onFiltersUpdate({ bodyType: ['SUV'] });
-      } else if (currentInput.toLowerCase().includes('sedan')) {
-        onFiltersUpdate({ bodyType: ['Sedan'] });
-      } else if (currentInput.toLowerCase().includes('electric')) {
-        onFiltersUpdate({ fuelType: ['Electric'] });
+      // If the AI returned updated filters, apply them
+      if (response.updatedFilters) {
+        onFiltersUpdate(response.updatedFilters);
       }
     } catch (error) {
       console.error('Failed to send message:', error);
