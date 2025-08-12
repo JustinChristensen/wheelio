@@ -53,20 +53,20 @@ export const CarSchema = z.object({
 
 // Car filters schema for validation and type inference
 export const CarFiltersSchema = z.object({
-  make: z.array(z.string()).optional(),
-  model: z.array(z.string()).optional(),
-  yearMin: z.number().optional(),
-  yearMax: z.number().optional(),
-  priceMin: z.number().optional(),
-  priceMax: z.number().optional(),
-  seats: z.array(z.number()).optional(),
-  safetyRating: z.number().min(1).max(5).optional(),
-  fuelType: z.array(FuelTypeSchema).optional(),
-  transmission: z.array(TransmissionSchema).optional(),
-  bodyType: z.array(BodyTypeSchema).optional(),
-  drivetrain: z.array(DrivetrainSchema).optional(),
-  features: z.array(z.string()).optional(),
-  dealershipId: z.array(z.string()).optional(),
+  make: z.array(z.string()).optional().describe("Array of car manufacturers/brands to filter by (e.g., ['Toyota', 'Honda'])"),
+  model: z.array(z.string()).optional().describe("Array of specific car models to filter by (e.g., ['Camry', 'Accord'])"),
+  yearMin: z.number().optional().describe("Minimum year for vehicles (e.g., 2020)"),
+  yearMax: z.number().optional().describe("Maximum year for vehicles (e.g., 2024)"),
+  priceMin: z.number().optional().describe("Minimum price in dollars (e.g., 20000)"),
+  priceMax: z.number().optional().describe("Maximum price in dollars (e.g., 50000)"),
+  seats: z.array(z.number()).optional().describe("Array of seat counts to filter by (e.g., [5, 7] for 5 or 7 seaters)"),
+  safetyRating: z.number().min(1).max(5).optional().describe("Minimum safety rating from 1-5 stars (e.g., 4 for 4+ star safety rating)"),
+  fuelType: z.array(FuelTypeSchema).optional().describe("Array of fuel types: 'Gas', 'Hybrid', or 'Electric'"),
+  transmission: z.array(TransmissionSchema).optional().describe("Array of transmission types: 'Manual', 'Automatic', or 'CVT'"),
+  bodyType: z.array(BodyTypeSchema).optional().describe("Array of vehicle body types: 'Sedan', 'SUV', 'Hatchback', 'Coupe', 'Convertible', 'Truck', 'Wagon', or 'Minivan'"),
+  drivetrain: z.array(DrivetrainSchema).optional().describe("Array of drivetrain types: 'FWD', 'RWD', 'AWD', or '4WD'"),
+  features: z.array(z.string()).optional().describe("Array of specific features to look for (e.g., ['Leather Seats', 'Sunroof'])"),
+  dealershipId: z.array(z.string()).optional().describe("Array of dealership IDs to filter by"),
 });
 
 // Export individual schemas for reuse

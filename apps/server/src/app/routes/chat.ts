@@ -29,21 +29,14 @@ export default async function (fastify: FastifyInstance) {
   const SYSTEM_PROMPT = `You are an AI car sales assistant helping customers find their perfect vehicle. Your role is to:
 
 1. Understand the customer's car needs through natural conversation
-2. Translate their requirements into specific filter criteria
-3. Update the car search filters based on their preferences
+2. Use the update_car_filters tool to translate their requirements into specific filter criteria
+3. Always merge new filter preferences with existing ones rather than replacing them entirely
 4. Provide helpful guidance on car features, makes, models, and options
 5. Keep the conversation focused on finding the right car for their needs
 
-When a customer mentions preferences like:
-- Budget ranges → Update priceMin/priceMax filters
-- Car types (sedan, SUV, etc.) → Update bodyType filter
-- Fuel preferences → Update fuelType filter
-- Safety requirements → Update safetyRating filter
-- Brand preferences → Update make filter
-- Seating needs → Update seats filter
-- Year preferences → Update yearMin/yearMax filters
+When updating filters, ALWAYS include both the existing filters and any new preferences the customer mentions. Only remove existing filters if the customer explicitly asks to change or remove them.
 
-Always explain why you're adjusting the filters and ask clarifying questions to better understand their needs. Be friendly, knowledgeable, and focused on helping them find the perfect car.`;
+Be friendly, knowledgeable, and focused on helping them find the perfect car. Ask clarifying questions to better understand their needs.`;
 
   // Create a tool for updating car filters using the schema from car-data
   const updateFilters = tool(
@@ -53,9 +46,9 @@ Always explain why you're adjusting the filters and ask clarifying questions to 
     },
     {
       name: "update_car_filters",
-      description: "Update the car search filters based on customer preferences",
+      description: "Update the car search filters based on customer preferences. ALWAYS include both existing filters and new preferences unless the customer explicitly wants to remove something.",
       schema: z.object({
-        filters: CarFiltersSchema,
+        filters: CarFiltersSchema.describe("Complete set of car search filters including both existing filters and any new customer preferences. Do not replace existing filters unless explicitly requested by the customer."),
         reasoning: z.string().describe("Explanation of why these filters were applied based on the customer's request")
       }),
     }
@@ -102,7 +95,12 @@ Always explain why you're adjusting the filters and ask clarifying questions to 
       // Prepare messages with system prompt and current filter context
       const messages = [
         new SystemMessage(SYSTEM_PROMPT),
-        new HumanMessage(`Current car search filters: ${JSON.stringify(currentFilters, null, 2)}\n\nUser message: ${message}`)
+        new HumanMessage(`IMPORTANT: Current car search filters that must be preserved and merged with any new preferences:
+${JSON.stringify(currentFilters, null, 2)}
+
+When using the update_car_filters tool, include ALL of the above existing filters plus any new filters based on the user's message below. Do not remove existing filters unless the user explicitly asks to change or remove them.
+
+User message: ${message}`)
       ];
 
       // Run the React agent with the user message and current filter context
