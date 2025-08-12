@@ -51,6 +51,7 @@ export function App() {
                   onToggle={() => setIsAIDrawerOpen(!isAIDrawerOpen)}
                   onFiltersUpdate={setFilters}
                   currentFilters={filters}
+                  cars={cars}
                 />
               </div>
             </main>

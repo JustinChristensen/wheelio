@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { CarFilters } from 'car-data';
+import { CarFilters, Car } from 'car-data';
 import { ApiService } from '../../services/api';
+import { calculateCarRanks, sortCarsByRank } from '../../utils/carRanking';
 
 interface Message {
   id: string;
@@ -14,9 +15,10 @@ interface AISalesAgentProps {
   onToggle: () => void;
   onFiltersUpdate: (filters: CarFilters) => void;
   currentFilters: CarFilters;
+  cars: Car[];
 }
 
-const AISalesAgent: React.FC<AISalesAgentProps> = ({ isOpen, onToggle, onFiltersUpdate, currentFilters }) => {
+const AISalesAgent: React.FC<AISalesAgentProps> = ({ isOpen, onToggle, onFiltersUpdate, currentFilters, cars }) => {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
@@ -51,20 +53,48 @@ const AISalesAgent: React.FC<AISalesAgentProps> = ({ isOpen, onToggle, onFilters
         currentFilters,
       });
 
+      let aiResponseContent = response.response;
+
+      // If the AI returned updated filters, check for perfect match scenarios
+      if (response.updatedFilters) {
+        // Check if there are actually any active filters
+        const hasActiveFilters = Object.keys(response.updatedFilters).length > 0;
+
+        // Only override AI response if there are active filters
+        if (hasActiveFilters) {
+          // Calculate what the filtered results would be
+          const rankedCars = calculateCarRanks(cars, response.updatedFilters);
+          const sortedCars = sortCarsByRank(rankedCars);
+          const perfectMatches = sortedCars.filter(car => car.matchType === 'perfect');
+
+          // Override AI response based on perfect match count
+          if (perfectMatches.length === 0) {
+            aiResponseContent = "Unfortunately there are no cars that perfectly match all your criteria right now. Would you like me to adjust some of your requirements or reset the filters to see more options? I can help you find cars that come close to what you're looking for.";
+          } else if (perfectMatches.length === 1) {
+            const perfectCar = perfectMatches[0];
+            // Filter out price-related reasons since we're already showing the price
+            const nonPriceReasons = perfectCar.matchedReasons.filter(reason => 
+              !reason.toLowerCase().includes('price')
+            );
+            const matchReasons = nonPriceReasons.join(', ').toLowerCase();
+            aiResponseContent = `Perfect! I found exactly one car that matches all your criteria: the ${perfectCar.year} ${perfectCar.make} ${perfectCar.model} for ${new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0 }).format(perfectCar.price)}. This car is ideal because ${matchReasons}. This looks like an excellent choice for you - would you like to move forward with this vehicle or would you like me to help you contact a sales representative?`;
+          }
+        }
+
+        // Apply the filters from AI
+        onFiltersUpdate(response.updatedFilters);
+      }
+
       const aiResponse: Message = {
         id: (Date.now() + 1).toString(),
         type: 'ai',
-        content: response.response,
+        content: aiResponseContent,
         timestamp: new Date(),
       };
       
       setMessages(prev => [...prev, aiResponse]);
       setConversationId(response.conversationId);
 
-      // If the AI returned updated filters, apply them
-      if (response.updatedFilters) {
-        onFiltersUpdate(response.updatedFilters);
-      }
     } catch (error) {
       console.error('Failed to send message:', error);
       const errorMessage: Message = {
