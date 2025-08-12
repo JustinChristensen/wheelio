@@ -93,13 +93,11 @@ export const calculateCarRanks = (cars: Car[], filters: CarFilters): CarRank[] =
         filterMatches.make = true;
         perfectMatches++;
         const reason = `${car.make} matches selected makes`;
-        reasons.push(reason);
         matchedReasons.push(reason);
       } else {
         totalScore += config.none * config.weight;
         filterMatches.make = false;
         const reason = `${car.make} not in selected makes`;
-        reasons.push(reason);
         notMatchedReasons.push(reason);
       }
     }
@@ -115,13 +113,11 @@ export const calculateCarRanks = (cars: Car[], filters: CarFilters): CarRank[] =
         filterMatches.bodyType = true;
         perfectMatches++;
         const reason = `${car.bodyType} matches selected body types`;
-        reasons.push(reason);
         matchedReasons.push(reason);
       } else {
         totalScore += config.none * config.weight;
         filterMatches.bodyType = false;
         const reason = `${car.bodyType} not in selected body types`;
-        reasons.push(reason);
         notMatchedReasons.push(reason);
       }
     }
@@ -137,13 +133,11 @@ export const calculateCarRanks = (cars: Car[], filters: CarFilters): CarRank[] =
         filterMatches.fuelType = true;
         perfectMatches++;
         const reason = `${car.fuelType} matches selected fuel types`;
-        reasons.push(reason);
         matchedReasons.push(reason);
       } else {
         totalScore += config.none * config.weight;
         filterMatches.fuelType = false;
         const reason = `${car.fuelType} not in selected fuel types`;
-        reasons.push(reason);
         notMatchedReasons.push(reason);
       }
     }
@@ -161,20 +155,17 @@ export const calculateCarRanks = (cars: Car[], filters: CarFilters): CarRank[] =
           filterMatches.safetyRating = true;
           perfectMatches++;
           const reason = `${car.safetyRating}-star safety rating matches exactly`;
-          reasons.push(reason);
           matchedReasons.push(reason);
         } else {
           totalScore += config.partial * config.weight;
           filterMatches.safetyRating = true;
           const reason = `${car.safetyRating}-star safety rating exceeds minimum`;
-          reasons.push(reason);
           matchedReasons.push(reason);
         }
       } else {
         totalScore += config.none * config.weight;
         filterMatches.safetyRating = false;
         const reason = `${car.safetyRating}-star safety rating below minimum`;
-        reasons.push(reason);
         notMatchedReasons.push(reason);
       }
     }
@@ -185,7 +176,6 @@ export const calculateCarRanks = (cars: Car[], filters: CarFilters): CarRank[] =
       matchType = 'no-filters';
       totalScore = 1000; // High base score for no filters
       const reason = 'No filters applied - showing all cars';
-      reasons.push(reason);
       matchedReasons.push(reason);
     } else if (perfectMatches === totalActiveFilters) {
       matchType = 'perfect';
@@ -206,7 +196,6 @@ export const calculateCarRanks = (cars: Car[], filters: CarFilters): CarRank[] =
       ...car,
       rankScore: totalScore,
       matchType,
-      matchReasons: reasons,
       matchedReasons,
       notMatchedReasons,
       filterMatches,
