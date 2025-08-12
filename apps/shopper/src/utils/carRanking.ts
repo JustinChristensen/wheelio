@@ -3,7 +3,6 @@ import { Car, CarFilters } from 'car-data';
 export interface CarRank extends Car {
   rankScore: number;
   matchType: 'perfect' | 'partial' | 'non-match' | 'no-filters';
-  matchReasons: string[];
   matchedReasons: string[];
   notMatchedReasons: string[];
   filterMatches: { [key: string]: boolean };
@@ -29,7 +28,6 @@ const FILTER_WEIGHTS: { [key: string]: FilterWeight } = {
 
 export const calculateCarRanks = (cars: Car[], filters: CarFilters): CarRank[] => {
   return cars.map((car): CarRank => {
-    const reasons: string[] = [];
     const matchedReasons: string[] = [];
     const notMatchedReasons: string[] = [];
     const filterMatches: { [key: string]: boolean } = {};
@@ -52,13 +50,11 @@ export const calculateCarRanks = (cars: Car[], filters: CarFilters): CarRank[] =
         filterMatches.priceRange = true;
         perfectMatches++;
         const reason = `Price $${car.price.toLocaleString()} matches range`;
-        reasons.push(reason);
         matchedReasons.push(reason);
       } else {
         totalScore += config.none * config.weight;
         filterMatches.priceRange = false;
         const reason = `Price $${car.price.toLocaleString()} outside range`;
-        reasons.push(reason);
         notMatchedReasons.push(reason);
       }
     }
@@ -77,13 +73,11 @@ export const calculateCarRanks = (cars: Car[], filters: CarFilters): CarRank[] =
         filterMatches.yearRange = true;
         perfectMatches++;
         const reason = `${car.year} matches year range`;
-        reasons.push(reason);
         matchedReasons.push(reason);
       } else {
         totalScore += config.none * config.weight;
         filterMatches.yearRange = false;
         const reason = `${car.year} outside year range`;
-        reasons.push(reason);
         notMatchedReasons.push(reason);
       }
     }
