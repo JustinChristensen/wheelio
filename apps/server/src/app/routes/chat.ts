@@ -3,8 +3,8 @@ import { ChatOpenAI } from '@langchain/openai';
 import { createReactAgent } from '@langchain/langgraph/prebuilt';
 import { MemorySaver } from '@langchain/langgraph';
 import { HumanMessage, AIMessage, SystemMessage } from '@langchain/core/messages';
-import { CarFilters } from 'car-data';
-import { DynamicStructuredTool } from '@langchain/core/tools';
+import { CarFilters, CarFiltersSchema } from 'car-data';
+import { tool } from '@langchain/core/tools';
 import { z } from 'zod';
 
 interface ChatRequest {
@@ -45,34 +45,21 @@ When a customer mentions preferences like:
 
 Always explain why you're adjusting the filters and ask clarifying questions to better understand their needs. Be friendly, knowledgeable, and focused on helping them find the perfect car.`;
 
-  // Create a tool for updating car filters
-  const updateFilters = new DynamicStructuredTool({
-    name: "update_car_filters",
-    description: "Update the car search filters based on customer preferences",
-    schema: z.object({
-      filters: z.object({
-        make: z.array(z.string()).optional(),
-        model: z.array(z.string()).optional(),
-        yearMin: z.number().optional(),
-        yearMax: z.number().optional(),
-        priceMin: z.number().optional(),
-        priceMax: z.number().optional(),
-        seats: z.array(z.number()).optional(),
-        safetyRating: z.number().optional(),
-        fuelType: z.array(z.string()).optional(),
-        transmission: z.array(z.string()).optional(),
-        bodyType: z.array(z.string()).optional(),
-        drivetrain: z.array(z.string()).optional(),
-        features: z.array(z.string()).optional(),
-        dealershipId: z.array(z.string()).optional(),
-      }),
-      reasoning: z.string().describe("Explanation of why these filters were applied based on the customer's request")
-    }),
-    func: async ({ filters, reasoning }) => {
+  // Create a tool for updating car filters using the schema from car-data
+  const updateFilters = tool(
+    async ({ filters, reasoning }) => {
       // Store the filters in the conversation context
       return `Updated car search filters: ${reasoning}. Filters applied: ${JSON.stringify(filters, null, 2)}`;
     },
-  });
+    {
+      name: "update_car_filters",
+      description: "Update the car search filters based on customer preferences",
+      schema: z.object({
+        filters: CarFiltersSchema,
+        reasoning: z.string().describe("Explanation of why these filters were applied based on the customer's request")
+      }),
+    }
+  );
 
   // Initialize OpenAI
   const model = new ChatOpenAI({

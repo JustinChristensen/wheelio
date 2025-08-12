@@ -1,3 +1,6 @@
+import { z } from 'zod';
+import { CarSchema, CarFiltersSchema } from './schemas';
+
 export interface Dealership {
   id: string;
   name: string;
@@ -11,38 +14,6 @@ export interface Dealership {
   website: string;
 }
 
-export interface Car {
-  id: string;
-  make: string;
-  model: string;
-  year: number;
-  price: number;
-  seats: number;
-  safetyRating: number; // 1-5 stars
-  imageUrl: string;
-  dealershipId: string;
-  features: string[];
-  color: string;
-  mileage: number;
-  fuelType: 'Gas' | 'Hybrid' | 'Electric';
-  transmission: 'Manual' | 'Automatic' | 'CVT';
-  bodyType: 'Sedan' | 'SUV' | 'Hatchback' | 'Coupe' | 'Convertible' | 'Truck' | 'Wagon' | 'Minivan';
-  drivetrain: 'FWD' | 'RWD' | 'AWD' | '4WD';
-}
-
-export interface CarFilters {
-  make?: string[];
-  model?: string[];
-  yearMin?: number;
-  yearMax?: number;
-  priceMin?: number;
-  priceMax?: number;
-  seats?: number[];
-  safetyRating?: number;
-  fuelType?: string[];
-  transmission?: string[];
-  bodyType?: string[];
-  drivetrain?: string[];
-  features?: string[];
-  dealershipId?: string[];
-}
+// Derive types from Zod schemas to ensure consistency
+export type Car = z.infer<typeof CarSchema>;
+export type CarFilters = z.infer<typeof CarFiltersSchema>;
