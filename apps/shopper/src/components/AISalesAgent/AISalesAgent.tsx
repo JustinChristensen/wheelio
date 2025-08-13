@@ -2,6 +2,8 @@ import React, { useState, useRef, useEffect } from 'react';
 import { CarFilters, Car } from 'car-data';
 import { ApiService } from '../../services/api';
 import { calculateCarRanks, sortCarsByRank } from '../../utils/carRanking';
+import { useCallQueue } from '../../hooks/useCallQueue';
+import CallStatus from '../CallStatus/CallStatus';
 
 interface Message {
   id: string;
@@ -32,6 +34,9 @@ const AISalesAgent: React.FC<AISalesAgentProps> = ({ isOpen, onToggle, onFilters
   const [conversationId, setConversationId] = useState<string | undefined>();
   const [isGuidedMode, setIsGuidedMode] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  
+  // Call queue functionality
+  const { callState, connect: connectToQueue, disconnect: disconnectFromQueue, isConnected: isCallConnected } = useCallQueue();
 
   // Auto-scroll to bottom when messages change or loading state changes
   useEffect(() => {
@@ -188,6 +193,14 @@ const AISalesAgent: React.FC<AISalesAgentProps> = ({ isOpen, onToggle, onFilters
         <>
           {/* Messages */}
           <div className="flex-1 overflow-auto p-4 space-y-4 min-h-0">
+            {/* Call Status */}
+            {isCallConnected && (
+              <CallStatus 
+                callState={callState} 
+                onDisconnect={disconnectFromQueue}
+              />
+            )}
+            
             {messages.map((message) => (
               <div
                 key={message.id}
@@ -316,8 +329,15 @@ const AISalesAgent: React.FC<AISalesAgentProps> = ({ isOpen, onToggle, onFilters
                 <span>Voice Chat</span>
               </button>
               
-              <button className="px-3 py-1 text-xs bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors">
-                Talk to Human Agent
+              <button 
+                onClick={isCallConnected ? disconnectFromQueue : connectToQueue}
+                className={`px-3 py-1 text-xs rounded-md transition-colors ${
+                  isCallConnected 
+                    ? 'bg-red-600 text-white hover:bg-red-700' 
+                    : 'bg-green-600 text-white hover:bg-green-700'
+                }`}
+              >
+                {isCallConnected ? 'End Call' : 'Talk to Human Agent'}
               </button>
             </div>
           </div>

@@ -18,7 +18,6 @@ const BodyTypeSchema = z.union([
   z.literal('SUV'),
   z.literal('Hatchback'),
   z.literal('Coupe'),
-  z.literal('Convertible'),
   z.literal('Truck'),
   z.literal('Wagon'),
   z.literal('Minivan')
@@ -63,7 +62,7 @@ export const CarFiltersSchema = z.object({
   safetyRating: z.number().min(1).max(5).optional().describe("Minimum safety rating from 1-5 stars (e.g., 4 for 4+ star safety rating)"),
   fuelType: z.array(FuelTypeSchema).optional().describe("Array of fuel types: 'Gas', 'Hybrid', or 'Electric'"),
   transmission: z.array(TransmissionSchema).optional().describe("Array of transmission types: 'Manual', 'Automatic', or 'CVT'"),
-  bodyType: z.array(BodyTypeSchema).optional().describe("Array of vehicle body types: 'Sedan', 'SUV', 'Hatchback', 'Coupe', 'Convertible', 'Truck', 'Wagon', or 'Minivan'"),
+  bodyType: z.array(BodyTypeSchema).optional().describe("Array of vehicle body types: 'Sedan', 'SUV', 'Hatchback', 'Coupe', 'Truck', 'Wagon', or 'Minivan'"),
   drivetrain: z.array(DrivetrainSchema).optional().describe("Array of drivetrain types: 'FWD', 'RWD', 'AWD', or '4WD'"),
   features: z.array(z.string()).optional().describe("Array of specific features to look for (e.g., ['Leather Seats', 'Sunroof'])"),
   dealershipId: z.array(z.string()).optional().describe("Array of dealership IDs to filter by"),

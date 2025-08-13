@@ -241,7 +241,7 @@ const CarGrid: React.FC<CarGridProps> = ({ filters, cars, loading = false, error
 
               {/* Action Button */}
               <button className="w-full mt-4 bg-blue-600 text-white py-2 px-4 rounded-md text-sm font-medium hover:bg-blue-700 transition-colors">
-                View Details
+                Buy Now
               </button>
             </div>
           </div>
