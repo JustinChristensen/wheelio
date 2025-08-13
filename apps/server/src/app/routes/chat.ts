@@ -19,6 +19,7 @@ interface ChatResponse {
   conversationId: string;
   updatedFilters?: CarFilters;
   guidedMode?: boolean;
+  callAction?: 'start' | 'end';
 }
 
 interface ErrorResponse {
@@ -67,6 +68,13 @@ When in guided mode, work through this sequence in order. Ask about the next mis
 - In guided mode: (1) Use update_car_filters tool FIRST if the message contains preferences, (2) Then ask the NEXT question in the sequence based on what filters are now missing
 - Always move to the next step in the guided mode flow - never ask vague follow-up questions
 
+**HUMAN AGENT CALL HANDLING**:
+- Use the handle_call_request tool when users want to speak with a human sales representative
+- Detect requests like: "talk to human", "speak to real person", "contact sales rep", "I want to call", "connect me to agent", etc.
+- Also detect end call requests like: "end call", "hang up", "stop talking to agent", "disconnect", "end conversation with rep"
+- Use action 'start' for initiating calls, 'end' for ending calls
+- Provide helpful explanations about the call process
+
 When updating filters, ALWAYS include both the existing filters and any new preferences. Only remove existing filters if explicitly requested.
 
 Be friendly, knowledgeable, and focused on helping them find the perfect car.`;
@@ -102,6 +110,21 @@ Be friendly, knowledgeable, and focused on helping them find the perfect car.`;
     }
   );
 
+  // Tool for handling human agent call requests
+  const handleCallRequest = tool(
+    async ({ action, reason }) => {
+      return `Call ${action} request processed. ${reason}`;
+    },
+    {
+      name: 'handle_call_request',
+      description: 'Use this tool when the user requests to speak with a human agent or wants to end a call with a human agent',
+      schema: z.object({
+        action: z.enum(['start', 'end']).describe("Whether to start or end a call with a human agent"),
+        reason: z.string().describe("Brief explanation of why the user wants to start or end the call")
+      }),
+    }
+  );
+
   // Initialize OpenAI
   const model = new ChatOpenAI({
     modelName: 'gpt-3.5-turbo',
@@ -115,7 +138,7 @@ Be friendly, knowledgeable, and focused on helping them find the perfect car.`;
   // Create the React agent with tools and memory
   const agent = createReactAgent({
     llm: model,
-    tools: [updateFilters, setGuidedMode],
+    tools: [updateFilters, setGuidedMode, handleCallRequest],
     checkpointSaver: memory,
   });
 
@@ -175,6 +198,7 @@ User Message: ${message}`)
       // Look for filter updates and guided mode changes in the conversation result
       let updatedFilters: CarFilters | undefined;
       let newGuidedMode: boolean | undefined;
+      let callAction: 'start' | 'end' | undefined;
       
       // Check if any tool calls were made that updated filters or guided mode
       for (const msg of result.messages) {
@@ -208,6 +232,13 @@ User Message: ${message}`)
               } catch (e) {
                 fastify.log.warn(e, 'Failed to parse set_guided_mode arguments:');
               }
+            } else if (toolCall.function?.name === 'handle_call_request') {
+              try {
+                const args = JSON.parse(toolCall.function.arguments);
+                callAction = args.action;
+              } catch (e) {
+                fastify.log.warn(e, 'Failed to parse handle_call_request arguments:');
+              }
             }
           }
         }
@@ -228,6 +259,11 @@ User Message: ${message}`)
         response.guidedMode = newGuidedMode;
       } else {
         response.guidedMode = guidedMode;
+      }
+
+      // Include call action if requested
+      if (callAction) {
+        response.callAction = callAction;
       }
 
       return reply.send(response);

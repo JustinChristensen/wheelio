@@ -75,6 +75,15 @@ const AISalesAgent: React.FC<AISalesAgentProps> = ({ isOpen, onToggle, onFilters
         setIsGuidedMode(response.guidedMode);
       }
 
+      // Handle call actions from AI
+      if (response.callAction) {
+        if (response.callAction === 'start' && !isCallConnected) {
+          connectToQueue();
+        } else if (response.callAction === 'end' && isCallConnected) {
+          disconnectFromQueue();
+        }
+      }
+
       // If the AI returned updated filters, check for perfect match scenarios
       if (response.updatedFilters) {
         // Check if there are actually any active filters

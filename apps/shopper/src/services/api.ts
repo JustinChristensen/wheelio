@@ -21,6 +21,7 @@ export interface ChatResponse {
   conversationId: string;
   updatedFilters?: CarFilters;
   guidedMode?: boolean;
+  callAction?: 'start' | 'end';
 }
 
 export class ApiService {
