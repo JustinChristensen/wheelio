@@ -193,14 +193,6 @@ const AISalesAgent: React.FC<AISalesAgentProps> = ({ isOpen, onToggle, onFilters
         <>
           {/* Messages */}
           <div className="flex-1 overflow-auto p-4 space-y-4 min-h-0">
-            {/* Call Status */}
-            {isCallConnected && (
-              <CallStatus 
-                callState={callState} 
-                onDisconnect={disconnectFromQueue}
-              />
-            )}
-            
             {messages.map((message) => (
               <div
                 key={message.id}
@@ -320,6 +312,16 @@ const AISalesAgent: React.FC<AISalesAgentProps> = ({ isOpen, onToggle, onFilters
                 Send
               </button>
             </div>
+            
+            {/* Call Status - Fixed position between input and buttons */}
+            {isCallConnected && (
+              <div className="mt-3">
+                <CallStatus 
+                  callState={callState} 
+                  onDisconnect={disconnectFromQueue}
+                />
+              </div>
+            )}
             
             <div className="mt-3 flex items-center justify-between">
               <button className="flex items-center space-x-2 px-3 py-1 text-xs text-gray-600 hover:text-gray-800 transition-colors">
