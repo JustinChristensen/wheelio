@@ -45,6 +45,7 @@
     "jest-environment-node": "^29.7.0",
     "jiti": "2.4.2",
     "jsdom": "~22.1.0",
+    "lodash": "^4.17.21",
     "nx": "21.3.11",
     "postcss": "8.4.38",
     "prettier": "^2.6.2",

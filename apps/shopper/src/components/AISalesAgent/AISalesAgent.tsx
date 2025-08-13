@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { CarFilters, Car } from 'car-data';
 import { ApiService } from '../../services/api';
 import { calculateCarRanks, sortCarsByRank } from '../../utils/carRanking';
+import { areFiltersEqual, hasActiveFilters } from '../../utils/filterComparison';
 import { useCallQueue } from '../../hooks/useCallQueue';
 import CallStatus from '../CallStatus/CallStatus';
 
@@ -84,38 +85,43 @@ const AISalesAgent: React.FC<AISalesAgentProps> = ({ isOpen, onToggle, onFilters
         }
       }
 
-      // If the AI returned updated filters, check for perfect match scenarios
+      // If the AI returned updated filters, check if they're actually different before processing
       if (response.updatedFilters) {
-        // Check if there are actually any active filters
-        const hasActiveFilters = Object.keys(response.updatedFilters).length > 0;
+        // Only process if the filters have actually changed
+        const filtersChanged = !areFiltersEqual(currentFilters, response.updatedFilters);
+        
+        if (filtersChanged) {
+          // Check if there are actually any active filters in the new filter set
+          const newFiltersActive = hasActiveFilters(response.updatedFilters);
 
-        // Override AI response if there are active filters
-        if (hasActiveFilters) {
-          // Calculate what the filtered results would be
-          const rankedCars = calculateCarRanks(cars, response.updatedFilters);
-          const sortedCars = sortCarsByRank(rankedCars);
-          const perfectMatches = sortedCars.filter(car => car.matchType === 'perfect');
+          // Override AI response if there are active filters
+          if (newFiltersActive) {
+            // Calculate what the filtered results would be
+            const rankedCars = calculateCarRanks(cars, response.updatedFilters);
+            const sortedCars = sortCarsByRank(rankedCars);
+            const perfectMatches = sortedCars.filter(car => car.matchType === 'perfect');
 
-          // Override AI response based on perfect match count
-          if (perfectMatches.length === 0) {
-            aiResponseContent = "Unfortunately there are no cars that perfectly match all your criteria right now. Would you like me to adjust some of your requirements or reset the filters to see more options? I can help you find cars that come close to what you're looking for.";
-            // Exit guided mode when we hit this scenario
-            setIsGuidedMode(false);
-          } else if (perfectMatches.length === 1) {
-            const perfectCar = perfectMatches[0];
-            // Filter out price-related reasons since we're already showing the price
-            const nonPriceReasons = perfectCar.matchedReasons.filter(reason => 
-              !reason.toLowerCase().includes('price')
-            );
-            const matchReasons = nonPriceReasons.join(', ').toLowerCase();
-            aiResponseContent = `Perfect! I found exactly one car that matches all your criteria: the ${perfectCar.year} ${perfectCar.make} ${perfectCar.model} for ${new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0 }).format(perfectCar.price)}. This car is ideal because ${matchReasons}. This looks like an excellent choice for you - would you like to move forward with this vehicle or would you like me to help you contact a sales representative?`;
-            // Exit guided mode when we hit this scenario
-            setIsGuidedMode(false);
+            // Override AI response based on perfect match count
+            if (perfectMatches.length === 0) {
+              aiResponseContent = "Unfortunately there are no cars that perfectly match all your criteria right now. Would you like me to adjust some of your requirements or reset the filters to see more options? I can help you find cars that come close to what you're looking for.";
+              // Exit guided mode when we hit this scenario
+              setIsGuidedMode(false);
+            } else if (perfectMatches.length === 1) {
+              const perfectCar = perfectMatches[0];
+              // Filter out price-related reasons since we're already showing the price
+              const nonPriceReasons = perfectCar.matchedReasons.filter(reason => 
+                !reason.toLowerCase().includes('price')
+              );
+              const matchReasons = nonPriceReasons.join(', ').toLowerCase();
+              aiResponseContent = `Perfect! I found exactly one car that matches all your criteria: the ${perfectCar.year} ${perfectCar.make} ${perfectCar.model} for ${new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0 }).format(perfectCar.price)}. This car is ideal because ${matchReasons}. This looks like an excellent choice for you - would you like to move forward with this vehicle or would you like me to help you contact a sales representative?`;
+              // Exit guided mode when we hit this scenario
+              setIsGuidedMode(false);
+            }
           }
-        }
 
-        // Apply the filters from AI
-        onFiltersUpdate(response.updatedFilters);
+          // Apply the filters from AI only if they changed
+          onFiltersUpdate(response.updatedFilters);
+        }
       }
 
       const aiResponse: Message = {
