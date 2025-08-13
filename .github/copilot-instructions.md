@@ -1,4 +1,9 @@
-# Wheelio - AI-Powered Car Dealership Platform
+# Wheelio3. **Core Shopper UI** - Built fully functional three-column layout in `apps/shopper`:
+   - Fixed header with responsive design and proper viewport management
+   - FilterSidebar with comprehensive faceted search controls
+   - CarGrid with perfect/partial/non-match ranking system and visual match indicators
+   - Collapsible AI chat drawer with seamless filter synchronization
+   - Role-based access control supporting both customer and sales rep workflows-Powered Car Dealership Platform
 
 ## What We've Done So Far
 
@@ -32,10 +37,9 @@ When instructed to use specific npm packages assume that I've already installed 
 
 Do not worry about generating or running unit tests.
 
-The system consists of three main applications in an NX monorepo:
+The system consists of two main applications in an NX monorepo:
 
-- **`apps/shopper`** - React customer-facing app with faceted search and AI chat
-- **`apps/sales`** - React sales dashboard with call queue and collaboration tools  
+- **`apps/shopper`** - React web app supporting both customers and sales reps with role-based access control
 - **`apps/server`** - Fastify backend handling WebRTC, WebSockets, and Y.js collaboration
 
 **Note**: All shared libraries are organized in the `libs/` directory (e.g., `libs/car-data` for mock data and types).
@@ -47,34 +51,33 @@ The system consists of three main applications in an NX monorepo:
 2. **AI Sales Agent**: Right-side drawer with voice/text input for guided car discovery
 3. **Filter Sync**: AI responses automatically update sidebar filters and re-rank cars
 4. **Handoff**: When ready, shoppers request human sales agent via call queue
-5. **WebRTC Connection**: Sales agents answer calls, establishing audio connection
-6. **Collaborative Session**: Y.js enables shared filter manipulation and synchronized views
+5. **WebRTC Connection**: Sales agents (using the same UI with different permissions) answer calls, establishing audio connection
+6. **Collaborative Session**: Y.js enables shared filter manipulation and synchronized views between customer and sales rep
 
 ### Key Integration Points
 - **AI ↔ Filters**: AI chat updates must trigger `apps/shopper/src/components/FilterSidebar` state changes
-- **WebRTC Flow**: `apps/server` orchestrates offer/answer between shopper and sales apps
+- **WebRTC Flow**: `apps/server` orchestrates offer/answer between customer and sales rep sessions
 - **Y.js Collaboration**: Real-time state sync for filter criteria and car rankings
-- **Call Queue**: WebSocket updates from server to `apps/sales` dashboard
+- **Call Queue**: WebSocket updates from server to sales rep interface (role-based UI views)
 
 ## Development Patterns
 
 ### NX Workspace Commands
 ```bash
 # Run applications
-npx nx serve shopper    # Development server for customer app
-npx nx serve sales      # Development server for sales dashboard  
+npx nx serve shopper    # Development server for main app (customers & sales reps)
 npx nx serve server     # Backend API server
 
 # Build and test
-npx nx build shopper sales server  # Production builds
+npx nx build shopper server  # Production builds
 npx nx test shopper     # Component tests
 npx nx lint             # ESLint across workspace
 ```
 
 ### State Management Strategy
-- **Shopper App**: Shared state between FilterSidebar and AI chat components
+- **Shopper App**: Role-based state management supporting both customers and sales reps
 - **Real-time Updates**: WebSocket connections for call queue and collaboration
-- **Y.js Document**: Synchronized filter state, chat state, and cursor and awareness between shopper and sales agents
+- **Y.js Document**: Synchronized filter state, chat state, and cursor and awareness between shoppers and sales agents
 
 ### Component Architecture
 ```
@@ -89,7 +92,7 @@ apps/shopper/src/
 ### Backend Integration
 - **Fastify Server**: RESTful APIs + WebSocket + WebRTC signaling in `apps/server`
 - **API Proxy**: Frontend apps use Vite's proxy configuration to route API calls to the backend server, eliminating CORS issues
-- **Call Queue Management**: Real-time updates via WebSocket to sales dashboard
+- **Call Queue Management**: Real-time updates via WebSocket to sales rep interface (role-based views)
 - **WebRTC Orchestration**: Offer/answer exchange for audio connections
 - **Y.js Backend**: In-memory collaborative document management via WebSockets (no persistence)
 - **Mock Data**: Generated car inventory data for demonstration purposes
@@ -111,6 +114,6 @@ apps/shopper/src/
 ## Critical Implementation Notes
 - **Filter State Sync**: AI chat responses must immediately reflect in sidebar filters
 - **Match Ranking Logic**: Cars display perfect/partial/non-match with explanations
-- **WebRTC Signaling**: Server coordinates audio connections between apps
+- **WebRTC Signaling**: Server coordinates audio connections between customer and sales rep sessions
 - **Y.js Integration**: Enables real-time collaborative filter manipulation
-- **Call Queue UX**: Sales agents see live updates and can claim shopper sessions
+- **Call Queue UX**: Sales reps see live updates and can claim shopper sessions (role-based UI)
