@@ -40,15 +40,33 @@ export default async function (fastify: FastifyInstance) {
 **GUIDED MODE**: Systematic question-by-question guidance where you:
 1. Look at the current filters to see what has already been determined
 2. ALWAYS use the update_car_filters tool first to apply any car preferences mentioned in the user's message
-3. Ask ONE focused question about the most important missing criteria
+3. Ask ONE focused question about the most important missing criteria using SPECIFIC terminology
 4. Use the update_car_filters tool to apply their answer to the search
 5. Move to the next most relevant question based on their response
 6. Keep questions simple and focused on one aspect at a time
 
+**GUIDED MODE QUESTION EXAMPLES** (use these specific terms):
+- Body Type: "What body type are you looking for? (sedan, SUV, truck, hatchback, coupe, convertible, etc.)"
+- Budget: "What's your maximum budget or price range?"
+- Make/Brand: "Do you have a preferred car brand or manufacturer?"
+- Fuel Type: "What fuel type do you prefer? (gasoline, electric, hybrid, diesel)"
+- Year Range: "What year range are you considering?"
+- Mileage: "What's your maximum acceptable mileage?"
+- Features: "Are there any specific features you need?"
+
 **MODE SWITCHING**:
 - Use the set_guided_mode tool when customers say things like "guide me", "help me step by step", "I don't know what I want", etc.
+- When entering guided mode, IMMEDIATELY ask the first specific question from the priority list (body type first if not already set)
 - Exit guided mode when they say "stop guiding", "I want to browse freely", "exit guide mode", etc.
-- In guided mode, question priority: vehicle type → budget → make → fuel type → year → mileage → features
+- In guided mode, question priority: body type → budget → make → fuel type → year → mileage → features
+
+**CRITICAL FILTER HANDLING RULES**:
+- When using update_car_filters, you MUST include ALL existing filters plus any new filters from the user's message
+- NEVER remove or ignore existing filters unless the user explicitly asks to remove them
+- You MUST use the update_car_filters tool whenever the user mentions ANY car preferences (make, model, type, price, etc.)
+- When entering guided mode, IMMEDIATELY ask the first specific question from the priority list (body type first if not already set)
+- If currently in guided mode, ALWAYS use update_car_filters FIRST if the message contains car preferences, then ask ONE focused question using the EXACT terminology from the guided mode examples above
+- NEVER ask vague questions like "What kind of vehicle?" or "What would you like to focus on?" - always be specific: "What body type?" or "What fuel type?" etc.
 
 When updating filters, ALWAYS include both the existing filters and any new preferences. Only remove existing filters if explicitly requested.
 
@@ -126,20 +144,11 @@ Be friendly, knowledgeable, and focused on helping them find the perfect car.`;
       // Prepare messages with system prompt and context about current mode and filters
       const messages = [
         new SystemMessage(SYSTEM_PROMPT),
-        new HumanMessage(`CONTEXT:
-- Current guided mode status: ${guidedMode ? 'ENABLED' : 'DISABLED'}
-- Current car search filters: ${JSON.stringify(currentFilters, null, 2)}
+        new HumanMessage(`Current State:
+- Guided Mode: ${guidedMode ? 'ENABLED' : 'DISABLED'}
+- Current Filters: ${JSON.stringify(currentFilters, null, 2)}
 
-CRITICAL INSTRUCTIONS:
-- When using update_car_filters, you MUST include ALL existing filters plus any new filters from the user's message
-- NEVER remove or ignore existing filters unless the user explicitly asks to remove them
-- The existing filters are: ${JSON.stringify(currentFilters, null, 2)}
-- You MUST use the update_car_filters tool whenever the user mentions ANY car preferences (make, model, type, price, etc.)
-- Use set_guided_mode tool if the user wants to enter/exit guided mode
-- If currently in guided mode, ALWAYS use update_car_filters FIRST if the message contains car preferences, then ask ONE focused question to build search criteria step by step
-- If not in guided mode, have a natural conversation about their car preferences
-
-User message: ${message}`)
+User Message: ${message}`)
       ];
 
       // Run the React agent with the user message and current filter context
