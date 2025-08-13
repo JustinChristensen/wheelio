@@ -199,14 +199,14 @@ User Message: ${message}`)
                   };
                 }
               } catch (e) {
-                fastify.log.warn('Failed to parse update_car_filters arguments:', e);
+                fastify.log.warn(e, 'Failed to parse update_car_filters arguments:');
               }
             } else if (toolCall.function?.name === 'set_guided_mode') {
               try {
                 const args = JSON.parse(toolCall.function.arguments);
                 newGuidedMode = args.enabled;
               } catch (e) {
-                fastify.log.warn('Failed to parse set_guided_mode arguments:', e);
+                fastify.log.warn(e, 'Failed to parse set_guided_mode arguments:');
               }
             }
           }

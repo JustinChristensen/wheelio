@@ -1,11 +1,15 @@
 import * as path from 'path';
 import { FastifyInstance } from 'fastify';
 import AutoLoad from '@fastify/autoload';
+import websocket from '@fastify/websocket';
 
 /* eslint-disable-next-line */
 export interface AppOptions {}
 
 export async function app(fastify: FastifyInstance, opts: AppOptions) {
+  // Register WebSocket support
+  await fastify.register(websocket);
+
   // Place here your custom code!
 
   // Do not touch the following lines
