@@ -11,6 +11,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.8.0",
+    "@fastify/websocket": "^11.2.0",
     "@langchain/core": "^0.3.69",
     "@langchain/langgraph": "^0.4.4",
     "@langchain/openai": "^0.6.7",
