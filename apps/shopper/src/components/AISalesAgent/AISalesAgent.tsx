@@ -23,13 +23,14 @@ const AISalesAgent: React.FC<AISalesAgentProps> = ({ isOpen, onToggle, onFilters
     {
       id: '1',
       type: 'ai',
-      content: "Hi! I'm your AI sales assistant. I can help you find the perfect car by asking about your preferences. What kind of car are you looking for today?",
+      content: "Hi there! I'm your AI sales assistant, and I'm here to help you find the perfect car. Feel free to tell me a bit about what you're looking for, or if you'd prefer, just say \"Guide me\" and I'll help you narrow it down step by step!",
       timestamp: new Date(),
     },
   ]);
   const [inputMessage, setInputMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [conversationId, setConversationId] = useState<string | undefined>();
+  const [isGuidedMode, setIsGuidedMode] = useState(false);
 
   const handleSendMessage = async () => {
     if (!inputMessage.trim()) return;
@@ -51,17 +52,23 @@ const AISalesAgent: React.FC<AISalesAgentProps> = ({ isOpen, onToggle, onFilters
         message: currentInput,
         conversationId,
         currentFilters,
+        guidedMode: isGuidedMode,
       });
 
       let aiResponseContent = response.response;
+
+      // Update guided mode if the AI changed it
+      if (response.guidedMode !== undefined) {
+        setIsGuidedMode(response.guidedMode);
+      }
 
       // If the AI returned updated filters, check for perfect match scenarios
       if (response.updatedFilters) {
         // Check if there are actually any active filters
         const hasActiveFilters = Object.keys(response.updatedFilters).length > 0;
 
-        // Only override AI response if there are active filters
-        if (hasActiveFilters) {
+        // Only override AI response if there are active filters and not in guided mode
+        if (hasActiveFilters && !isGuidedMode && response.guidedMode !== true) {
           // Calculate what the filtered results would be
           const rankedCars = calculateCarRanks(cars, response.updatedFilters);
           const sortedCars = sortCarsByRank(rankedCars);
@@ -149,7 +156,14 @@ const AISalesAgent: React.FC<AISalesAgentProps> = ({ isOpen, onToggle, onFilters
             </svg>
           </div>
           <div>
-            <h3 className="text-sm font-semibold text-gray-900">AI Sales Assistant</h3>
+            <h3 className="text-sm font-semibold text-gray-900">
+              AI Sales Assistant
+              {isGuidedMode && (
+                <span className="ml-2 px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded-full">
+                  Guided Mode
+                </span>
+              )}
+            </h3>
             <p className="text-xs text-green-600 flex items-center">
               <span className="w-2 h-2 bg-green-500 rounded-full mr-1"></span>
               Online
@@ -201,26 +215,59 @@ const AISalesAgent: React.FC<AISalesAgentProps> = ({ isOpen, onToggle, onFilters
           {/* Quick Actions */}
           <div className="p-4 border-t border-gray-100">
             <div className="mb-3">
-              <p className="text-xs font-medium text-gray-700 mb-2">Quick Questions:</p>
+              <p className="text-xs font-medium text-gray-700 mb-2">
+                {isGuidedMode ? 'Guided Mode Options:' : 'Quick Questions:'}
+              </p>
               <div className="flex flex-wrap gap-2">
-                <button
-                  onClick={() => setInputMessage("I need a family SUV under $40,000")}
-                  className="px-3 py-1 text-xs bg-gray-100 text-gray-700 rounded-full hover:bg-gray-200 transition-colors"
-                >
-                  Family SUV
-                </button>
-                <button
-                  onClick={() => setInputMessage("Show me electric vehicles")}
-                  className="px-3 py-1 text-xs bg-gray-100 text-gray-700 rounded-full hover:bg-gray-200 transition-colors"
-                >
-                  Electric Cars
-                </button>
-                <button
-                  onClick={() => setInputMessage("I want a luxury sedan")}
-                  className="px-3 py-1 text-xs bg-gray-100 text-gray-700 rounded-full hover:bg-gray-200 transition-colors"
-                >
-                  Luxury Sedan
-                </button>
+                {!isGuidedMode ? (
+                  <>
+                    <button
+                      onClick={() => setInputMessage("Guide me")}
+                      className="px-3 py-1 text-xs bg-blue-100 text-blue-700 rounded-full hover:bg-blue-200 transition-colors font-medium"
+                    >
+                      <span role="img" aria-label="guide">📋</span> Guide me
+                    </button>
+                    <button
+                      onClick={() => setInputMessage("I need a family SUV under $40,000")}
+                      className="px-3 py-1 text-xs bg-gray-100 text-gray-700 rounded-full hover:bg-gray-200 transition-colors"
+                    >
+                      Family SUV
+                    </button>
+                    <button
+                      onClick={() => setInputMessage("Show me electric vehicles")}
+                      className="px-3 py-1 text-xs bg-gray-100 text-gray-700 rounded-full hover:bg-gray-200 transition-colors"
+                    >
+                      Electric Cars
+                    </button>
+                    <button
+                      onClick={() => setInputMessage("I want a luxury sedan")}
+                      className="px-3 py-1 text-xs bg-gray-100 text-gray-700 rounded-full hover:bg-gray-200 transition-colors"
+                    >
+                      Luxury Sedan
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button
+                      onClick={() => setInputMessage("I'm not sure")}
+                      className="px-3 py-1 text-xs bg-gray-100 text-gray-700 rounded-full hover:bg-gray-200 transition-colors"
+                    >
+                      I'm not sure
+                    </button>
+                    <button
+                      onClick={() => setInputMessage("Skip this question")}
+                      className="px-3 py-1 text-xs bg-gray-100 text-gray-700 rounded-full hover:bg-gray-200 transition-colors"
+                    >
+                      Skip this
+                    </button>
+                    <button
+                      onClick={() => setInputMessage("I want to browse freely")}
+                      className="px-3 py-1 text-xs bg-red-100 text-red-700 rounded-full hover:bg-red-200 transition-colors"
+                    >
+                      Exit guided mode
+                    </button>
+                  </>
+                )}
               </div>
             </div>
           </div>

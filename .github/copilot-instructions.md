@@ -18,10 +18,17 @@
 
 3. **Set Up AI Sales Agent Backend** - Integrated LangGraph with OpenAI in `apps/server`:
    - Environment variables configured with dotenv-flow in `/env` directory
-   - Chat endpoint at `/api/chat` using createReactAgent from LangGraph
+   - Chat endpoint at `/chat` using createReactAgent from LangGraph
    - OpenAI GPT-3.5-turbo integration for natural language processing
    - Conversation persistence with unique conversation IDs
    - Frontend integration through Vite proxy configuration
+
+4. **Implemented Smart AI Response Overrides** - Enhanced AI chat with client-side intelligence:
+   - AI detects when filter updates result in 0 or 1 perfect matches
+   - Override messages for zero matches: offers to adjust criteria or reset filters
+   - Override messages for single matches: highlights the perfect car with detailed reasoning
+   - Filters out redundant price information from match explanations
+   - Only triggers overrides when actual filter criteria are applied (not on resets)
 
 ## Project Overview
 

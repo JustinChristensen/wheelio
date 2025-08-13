@@ -13,12 +13,14 @@ export interface ChatRequest {
   message: string;
   conversationId?: string;
   currentFilters?: CarFilters;
+  guidedMode?: boolean;
 }
 
 export interface ChatResponse {
   response: string;
   conversationId: string;
   updatedFilters?: CarFilters;
+  guidedMode?: boolean;
 }
 
 export class ApiService {

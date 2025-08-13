@@ -11,12 +11,14 @@ interface ChatRequest {
   message: string;
   conversationId?: string;
   currentFilters?: CarFilters;
+  guidedMode?: boolean;
 }
 
 interface ChatResponse {
   response: string;
   conversationId: string;
   updatedFilters?: CarFilters;
+  guidedMode?: boolean;
 }
 
 interface ErrorResponse {
@@ -25,18 +27,31 @@ interface ErrorResponse {
 }
 
 export default async function (fastify: FastifyInstance) {
-  // System prompt to keep the agent focused on car shopping
-  const SYSTEM_PROMPT = `You are an AI car sales assistant helping customers find their perfect vehicle. Your role is to:
+  // System prompt that handles both modes and mode switching
+  const SYSTEM_PROMPT = `You are an AI car sales assistant helping customers find their perfect vehicle. You can operate in two modes:
 
+**NORMAL MODE** (default): Free-form conversation where you:
 1. Understand the customer's car needs through natural conversation
 2. Use the update_car_filters tool to translate their requirements into specific filter criteria
 3. Always merge new filter preferences with existing ones rather than replacing them entirely
 4. Provide helpful guidance on car features, makes, models, and options
-5. Keep the conversation focused on finding the right car for their needs
+5. Ask clarifying questions to better understand their needs
 
-When updating filters, ALWAYS include both the existing filters and any new preferences the customer mentions. Only remove existing filters if the customer explicitly asks to change or remove them.
+**GUIDED MODE**: Systematic question-by-question guidance where you:
+1. Look at the current filters to see what has already been determined
+2. Ask ONE focused question about the most important missing criteria
+3. Use the update_car_filters tool to apply their answer to the search
+4. Move to the next most relevant question based on their response
+5. Keep questions simple and focused on one aspect at a time
 
-Be friendly, knowledgeable, and focused on helping them find the perfect car. Ask clarifying questions to better understand their needs.`;
+**MODE SWITCHING**:
+- Use the set_guided_mode tool when customers say things like "guide me", "help me step by step", "I don't know what I want", etc.
+- Exit guided mode when they say "stop guiding", "I want to browse freely", "exit guide mode", etc.
+- In guided mode, question priority: vehicle type → budget → make → fuel type → year → mileage → features
+
+When updating filters, ALWAYS include both the existing filters and any new preferences. Only remove existing filters if explicitly requested.
+
+Be friendly, knowledgeable, and focused on helping them find the perfect car.`;
 
   // Create a tool for updating car filters using the schema from car-data
   const updateFilters = tool(
@@ -54,6 +69,21 @@ Be friendly, knowledgeable, and focused on helping them find the perfect car. As
     }
   );
 
+  // Create a tool for controlling guided mode state
+  const setGuidedMode = tool(
+    async ({ enabled, reasoning }) => {
+      return `${enabled ? 'Entered' : 'Exited'} guided mode: ${reasoning}`;
+    },
+    {
+      name: "set_guided_mode",
+      description: "Control whether the conversation is in guided mode. Use this when the customer explicitly asks to be guided through the car selection process or wants to exit guided mode.",
+      schema: z.object({
+        enabled: z.boolean().describe("Whether guided mode should be enabled (true) or disabled (false)"),
+        reasoning: z.string().describe("Explanation of why guided mode is being enabled or disabled")
+      }),
+    }
+  );
+
   // Initialize OpenAI
   const model = new ChatOpenAI({
     modelName: 'gpt-3.5-turbo',
@@ -67,7 +97,7 @@ Be friendly, knowledgeable, and focused on helping them find the perfect car. As
   // Create the React agent with tools and memory
   const agent = createReactAgent({
     llm: model,
-    tools: [updateFilters],
+    tools: [updateFilters, setGuidedMode],
     checkpointSaver: memory,
   });
 
@@ -76,7 +106,7 @@ Be friendly, knowledgeable, and focused on helping them find the perfect car. As
     Reply: ChatResponse | ErrorResponse 
   }>('/chat', async (request, reply) => {
     try {
-      const { message, conversationId, currentFilters = {} } = request.body;
+      const { message, conversationId, currentFilters = {}, guidedMode = false } = request.body;
 
       if (!message) {
         return reply.code(400).send({ error: 'Message is required' });
@@ -92,13 +122,18 @@ Be friendly, knowledgeable, and focused on helping them find the perfect car. As
         },
       };
 
-      // Prepare messages with system prompt and current filter context
+      // Prepare messages with system prompt and context about current mode and filters
       const messages = [
         new SystemMessage(SYSTEM_PROMPT),
-        new HumanMessage(`IMPORTANT: Current car search filters that must be preserved and merged with any new preferences:
-${JSON.stringify(currentFilters, null, 2)}
+        new HumanMessage(`CONTEXT:
+- Current guided mode status: ${guidedMode ? 'ENABLED' : 'DISABLED'}
+- Current car search filters: ${JSON.stringify(currentFilters, null, 2)}
 
-When using the update_car_filters tool, include ALL of the above existing filters plus any new filters based on the user's message below. Do not remove existing filters unless the user explicitly asks to change or remove them.
+INSTRUCTIONS:
+- When using update_car_filters, include ALL existing filters plus any new filters from the user's message
+- Use set_guided_mode tool if the user wants to enter/exit guided mode
+- If currently in guided mode, ask ONE focused question to build search criteria step by step
+- If not in guided mode, have a natural conversation about their car preferences
 
 User message: ${message}`)
       ];
@@ -115,10 +150,11 @@ User message: ${message}`)
         ? aiResponse.content 
         : JSON.stringify(aiResponse.content);
 
-      // Look for filter updates in the conversation result
+      // Look for filter updates and guided mode changes in the conversation result
       let updatedFilters: CarFilters | undefined;
+      let newGuidedMode: boolean | undefined;
       
-      // Check if any tool calls were made that updated filters
+      // Check if any tool calls were made that updated filters or guided mode
       for (const msg of result.messages) {
         if (msg.additional_kwargs?.tool_calls) {
           for (const toolCall of msg.additional_kwargs.tool_calls) {
@@ -127,7 +163,14 @@ User message: ${message}`)
                 const args = JSON.parse(toolCall.function.arguments);
                 updatedFilters = args.filters;
               } catch (e) {
-                fastify.log.warn('Failed to parse tool call arguments:', e);
+                fastify.log.warn('Failed to parse update_car_filters arguments:', e);
+              }
+            } else if (toolCall.function?.name === 'set_guided_mode') {
+              try {
+                const args = JSON.parse(toolCall.function.arguments);
+                newGuidedMode = args.enabled;
+              } catch (e) {
+                fastify.log.warn('Failed to parse set_guided_mode arguments:', e);
               }
             }
           }
@@ -139,9 +182,14 @@ User message: ${message}`)
         conversationId: id,
       };
 
-      // Only include updatedFilters if they were actually changed
+      // Include updated filters if they were changed
       if (updatedFilters) {
         response.updatedFilters = updatedFilters;
+      }
+
+      // Include guided mode state if it was changed
+      if (newGuidedMode !== undefined) {
+        response.guidedMode = newGuidedMode;
       }
 
       return reply.send(response);
