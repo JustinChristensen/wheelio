@@ -2,33 +2,23 @@
 
 ## What We've Done So Far
 
-1. **Created Sample Car Data** - Generated comprehensive mock data in `libs/car-data` including:
-   - 50 sample cars across multiple dealerships with realistic specifications
-   - Car types include sedans, SUVs, trucks, hatchbacks, and coupes 
-   - Brands: Tesla, BMW, Mercedes-Benz, Audi, Ford, Toyota, Honda, and more
-   - Complete TypeScript interfaces for Car, Dealership, and CarFilters types
+1. **Sample Car Data & Types** - Created comprehensive mock data in `libs/car-data`:
+   - 50 realistic cars across multiple dealerships with complete specifications
+   - TypeScript interfaces for Car, Dealership, and CarFilters types
+   - Diverse inventory spanning sedans, SUVs, trucks, hatchbacks, coupes from major brands
 
-2. **Built Initial Shopper UI Structure** - Implemented the main layout in `apps/shopper` with:
-   - Fixed global header with "Wheelio" branding
-   - Three-column layout: FilterSidebar (left), CarGrid (center), AISalesAgent drawer (right)
-   - Proper scrolling behavior for all sections within fixed viewport height
-   - Car matching algorithm with perfect/partial/non-match ranking system
-   - AI chat interface with collapsible drawer (starts open)
-   - Filter synchronization between sidebar and AI chat components
+2. **Core Shopper UI** - Built fully functional three-column layout in `apps/shopper`:
+   - Fixed header with responsive design and proper viewport management
+   - FilterSidebar with comprehensive faceted search controls
+   - CarGrid with perfect/partial/non-match ranking system and visual match indicators
+   - Collapsible AI chat drawer with seamless filter synchronization
 
-3. **Set Up AI Sales Agent Backend** - Integrated LangGraph with OpenAI in `apps/server`:
-   - Environment variables configured with dotenv-flow in `/env` directory
-   - Chat endpoint at `/chat` using createReactAgent from LangGraph
-   - OpenAI GPT-3.5-turbo integration for natural language processing
-   - Conversation persistence with unique conversation IDs
-   - Frontend integration through Vite proxy configuration
-
-4. **Implemented Smart AI Response Overrides** - Enhanced AI chat with client-side intelligence:
-   - AI detects when filter updates result in 0 or 1 perfect matches
-   - Override messages for zero matches: offers to adjust criteria or reset filters
-   - Override messages for single matches: highlights the perfect car with detailed reasoning
-   - Filters out redundant price information from match explanations
-   - Only triggers overrides when actual filter criteria are applied (not on resets)
+3. **AI Sales Agent Integration** - Implemented LangGraph-powered chat system:
+   - Backend `/chat` endpoint using OpenAI GPT-3.5-turbo with LangGraph createReactAgent
+   - Conversation persistence with unique IDs and environment configuration
+   - Dual-mode operation: free-form conversation and structured guided mode
+   - Smart client-side response overrides for zero/single match scenarios
+   - Real-time filter updates from natural language requests
 
 ## Project Overview
 
