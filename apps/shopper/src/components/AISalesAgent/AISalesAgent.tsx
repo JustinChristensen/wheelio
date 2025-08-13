@@ -75,8 +75,8 @@ const AISalesAgent: React.FC<AISalesAgentProps> = ({ isOpen, onToggle, onFilters
         // Check if there are actually any active filters
         const hasActiveFilters = Object.keys(response.updatedFilters).length > 0;
 
-        // Only override AI response if there are active filters and not in guided mode
-        if (hasActiveFilters && !isGuidedMode && response.guidedMode !== true) {
+        // Override AI response if there are active filters
+        if (hasActiveFilters) {
           // Calculate what the filtered results would be
           const rankedCars = calculateCarRanks(cars, response.updatedFilters);
           const sortedCars = sortCarsByRank(rankedCars);
@@ -85,6 +85,8 @@ const AISalesAgent: React.FC<AISalesAgentProps> = ({ isOpen, onToggle, onFilters
           // Override AI response based on perfect match count
           if (perfectMatches.length === 0) {
             aiResponseContent = "Unfortunately there are no cars that perfectly match all your criteria right now. Would you like me to adjust some of your requirements or reset the filters to see more options? I can help you find cars that come close to what you're looking for.";
+            // Exit guided mode when we hit this scenario
+            setIsGuidedMode(false);
           } else if (perfectMatches.length === 1) {
             const perfectCar = perfectMatches[0];
             // Filter out price-related reasons since we're already showing the price
@@ -93,6 +95,8 @@ const AISalesAgent: React.FC<AISalesAgentProps> = ({ isOpen, onToggle, onFilters
             );
             const matchReasons = nonPriceReasons.join(', ').toLowerCase();
             aiResponseContent = `Perfect! I found exactly one car that matches all your criteria: the ${perfectCar.year} ${perfectCar.make} ${perfectCar.model} for ${new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0 }).format(perfectCar.price)}. This car is ideal because ${matchReasons}. This looks like an excellent choice for you - would you like to move forward with this vehicle or would you like me to help you contact a sales representative?`;
+            // Exit guided mode when we hit this scenario
+            setIsGuidedMode(false);
           }
         }
 
