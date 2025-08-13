@@ -63,6 +63,7 @@ export default async function (fastify: FastifyInstance) {
 **CRITICAL FILTER HANDLING RULES**:
 - When using update_car_filters, you MUST include ALL existing filters plus any new filters from the user's message
 - NEVER remove or ignore existing filters unless the user explicitly asks to remove them
+- To RESET or CLEAR all filters, pass an empty filters object {} with reasoning explaining the reset/clear operation
 - You MUST use the update_car_filters tool whenever the user mentions ANY car preferences (make, model, type, price, etc.)
 - When entering guided mode, IMMEDIATELY ask the first specific question from the priority list (body type first if not already set)
 - If currently in guided mode, ALWAYS use update_car_filters FIRST if the message contains car preferences, then ask ONE focused question using the EXACT terminology from the guided mode examples above
@@ -174,11 +175,21 @@ User Message: ${message}`)
             if (toolCall.function?.name === 'update_car_filters') {
               try {
                 const args = JSON.parse(toolCall.function.arguments);
-                // Merge the new filters with existing filters instead of replacing
-                updatedFilters = {
-                  ...currentFilters,
-                  ...args.filters
-                };
+                // Check if this is a reset operation (empty filters object with reset-related reasoning)
+                const isReset = Object.keys(args.filters).length === 0 && 
+                               args.reasoning && 
+                               /reset|clear|remove all|start over|blank|empty/i.test(args.reasoning);
+                
+                if (isReset) {
+                  // For reset operations, use empty filters
+                  updatedFilters = {};
+                } else {
+                  // For normal operations, merge with existing filters
+                  updatedFilters = {
+                    ...currentFilters,
+                    ...args.filters
+                  };
+                }
               } catch (e) {
                 fastify.log.warn('Failed to parse update_car_filters arguments:', e);
               }
