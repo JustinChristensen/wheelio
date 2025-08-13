@@ -39,10 +39,11 @@ export default async function (fastify: FastifyInstance) {
 
 **GUIDED MODE**: Systematic question-by-question guidance where you:
 1. Look at the current filters to see what has already been determined
-2. Ask ONE focused question about the most important missing criteria
-3. Use the update_car_filters tool to apply their answer to the search
-4. Move to the next most relevant question based on their response
-5. Keep questions simple and focused on one aspect at a time
+2. ALWAYS use the update_car_filters tool first to apply any car preferences mentioned in the user's message
+3. Ask ONE focused question about the most important missing criteria
+4. Use the update_car_filters tool to apply their answer to the search
+5. Move to the next most relevant question based on their response
+6. Keep questions simple and focused on one aspect at a time
 
 **MODE SWITCHING**:
 - Use the set_guided_mode tool when customers say things like "guide me", "help me step by step", "I don't know what I want", etc.
@@ -87,7 +88,7 @@ Be friendly, knowledgeable, and focused on helping them find the perfect car.`;
   // Initialize OpenAI
   const model = new ChatOpenAI({
     modelName: 'gpt-3.5-turbo',
-    temperature: 0.7,
+    temperature: 0.1,
     openAIApiKey: process.env.OPENAI_API_KEY,
   });
 
@@ -129,10 +130,13 @@ Be friendly, knowledgeable, and focused on helping them find the perfect car.`;
 - Current guided mode status: ${guidedMode ? 'ENABLED' : 'DISABLED'}
 - Current car search filters: ${JSON.stringify(currentFilters, null, 2)}
 
-INSTRUCTIONS:
-- When using update_car_filters, include ALL existing filters plus any new filters from the user's message
+CRITICAL INSTRUCTIONS:
+- When using update_car_filters, you MUST include ALL existing filters plus any new filters from the user's message
+- NEVER remove or ignore existing filters unless the user explicitly asks to remove them
+- The existing filters are: ${JSON.stringify(currentFilters, null, 2)}
+- You MUST use the update_car_filters tool whenever the user mentions ANY car preferences (make, model, type, price, etc.)
 - Use set_guided_mode tool if the user wants to enter/exit guided mode
-- If currently in guided mode, ask ONE focused question to build search criteria step by step
+- If currently in guided mode, ALWAYS use update_car_filters FIRST if the message contains car preferences, then ask ONE focused question to build search criteria step by step
 - If not in guided mode, have a natural conversation about their car preferences
 
 User message: ${message}`)
@@ -161,7 +165,11 @@ User message: ${message}`)
             if (toolCall.function?.name === 'update_car_filters') {
               try {
                 const args = JSON.parse(toolCall.function.arguments);
-                updatedFilters = args.filters;
+                // Merge the new filters with existing filters instead of replacing
+                updatedFilters = {
+                  ...currentFilters,
+                  ...args.filters
+                };
               } catch (e) {
                 fastify.log.warn('Failed to parse update_car_filters arguments:', e);
               }
@@ -187,9 +195,11 @@ User message: ${message}`)
         response.updatedFilters = updatedFilters;
       }
 
-      // Include guided mode state if it was changed
+      // Include guided mode state - use the new state if changed, otherwise preserve current state
       if (newGuidedMode !== undefined) {
         response.guidedMode = newGuidedMode;
+      } else {
+        response.guidedMode = guidedMode;
       }
 
       return reply.send(response);
