@@ -1,9 +1,4 @@
-# Wheelio3. **Core Shopper UI** - Built fully functional three-column layout in `apps/shopper`:
-   - Fixed header with responsive design and proper viewport management
-   - FilterSidebar with comprehensive faceted search controls
-   - CarGrid with perfect/partial/non-match ranking system and visual match indicators
-   - Collapsible AI chat drawer with seamless filter synchronization
-   - Role-based access control supporting both customer and sales rep workflows-Powered Car Dealership Platform
+# Wheelio - AI-Powered Car Dealership Platform
 
 ## What We've Done So Far
 
@@ -24,6 +19,19 @@
    - Dual-mode operation: free-form conversation and structured guided mode
    - Smart client-side response overrides for zero/single match scenarios
    - Real-time filter updates from natural language requests
+
+4. **Routing & Multi-Role Architecture** - Set up React Router for dual-purpose application:
+   - **Root route `/`** - Customer-facing car shopping experience with filtering, AI chat, and car grid
+   - **Sales route `/sales`** - Sales representative dashboard with real-time call queue monitoring
+   - Shared header component across all routes for consistent navigation
+   - Role-based UI components supporting both customer and sales rep workflows
+
+5. **Sales Rep Dashboard** - Built comprehensive call queue management system:
+   - Real-time WebSocket connection to monitor incoming customer calls
+   - Live call queue grid with clickable tiles showing wait times, connection status, and assignments
+   - Connection status indicator with automatic reconnection logic
+   - Client-side age calculation with 10-second update intervals for smooth timer updates
+   - Comprehensive call state tracking (connected, assigned, offline) with visual indicators
 
 ## Project Overview
 
@@ -46,19 +54,33 @@ The system consists of two main applications in an NX monorepo:
 
 ## Architecture & Data Flow
 
-### Core User Journey
+### Core User Journeys
+
+#### Customer Journey (Root Route `/`)
 1. **Faceted Search**: Shoppers filter cars with sidebar controls, seeing match rankings (perfect/partial/non-match)
 2. **AI Sales Agent**: Right-side drawer with voice/text input for guided car discovery
 3. **Filter Sync**: AI responses automatically update sidebar filters and re-rank cars
 4. **Handoff**: When ready, shoppers request human sales agent via call queue
-5. **WebRTC Connection**: Sales agents (using the same UI with different permissions) answer calls, establishing audio connection
-6. **Collaborative Session**: Y.js enables shared filter manipulation and synchronized views between customer and sales rep
+
+#### Sales Rep Journey (Sales Route `/sales`)
+1. **Queue Monitoring**: Real-time dashboard showing all customer calls waiting for assistance
+2. **Call Management**: Visual grid of customer tiles with wait times, connection status, and assignment tracking
+3. **WebRTC Connection**: Sales agents can claim calls, establishing audio connection with customers
+4. **Collaborative Session**: Y.js enables shared filter manipulation and synchronized views between customer and sales rep
+
+### Routing Architecture
+- **Shared Components**: Header component renders on all routes for consistent navigation
+- **Route-Specific Content**: Main content area changes based on current route
+  - `/` → `ShopperPage` component (customer car shopping interface)
+  - `/sales` → `SalesRepPage` component (sales rep call queue dashboard)
+- **Navigation**: Users can switch between customer and sales rep views via URL navigation
 
 ### Key Integration Points
 - **AI ↔ Filters**: AI chat updates must trigger `apps/shopper/src/components/FilterSidebar` state changes
 - **WebRTC Flow**: `apps/server` orchestrates offer/answer between customer and sales rep sessions
 - **Y.js Collaboration**: Real-time state sync for filter criteria and car rankings
-- **Call Queue**: WebSocket updates from server to sales rep interface (role-based UI views)
+- **Call Queue**: WebSocket updates from server to sales rep interface via `/ws/calls/monitor` endpoint
+- **Real-time Updates**: Client-side age calculation ensures timers update smoothly without server dependency
 
 ## Development Patterns
 
@@ -82,11 +104,21 @@ npx nx lint             # ESLint across workspace
 ### Component Architecture
 ```
 apps/shopper/src/
+├── app/
+│   └── app.tsx                # Main routing container with React Router
 ├── components/
-│   ├── FilterSidebar/          # Car search filters with ranking logic
+│   ├── ShopperPage/           # Customer car shopping interface (route: /)
+│   ├── SalesRepPage/          # Sales rep call queue dashboard (route: /sales)
+│   ├── Header/                # Shared navigation header across all routes
+│   ├── FilterSidebar/         # Car search filters with ranking logic
 │   ├── CarGrid/               # Ranked car display with match indicators
 │   ├── AISalesAgent/          # Chat interface with voice/text input
+│   ├── CallQueueGrid/         # Real-time call queue visualization
+│   ├── ConnectionStatus/      # WebSocket connection status indicator
 │   └── CollaborationProvider/ # Y.js integration wrapper
+├── hooks/
+│   ├── useSalesRepWebSocket.ts # WebSocket management for sales rep dashboard
+│   └── useCarData.ts          # Car inventory data fetching
 ```
 
 ### Backend Integration
