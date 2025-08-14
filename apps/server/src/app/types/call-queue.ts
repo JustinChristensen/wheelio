@@ -1,5 +1,12 @@
 import WebSocket from 'ws';
 
+export interface MediaCapabilities {
+  hasAudioInput: boolean;
+  audioInputDevices: number;
+  detectionError?: string;
+  detectedAt: Date;
+}
+
 export interface CallQueueEntry {
   shopperId: string;
   shopperSocket: WebSocket;
@@ -7,6 +14,9 @@ export interface CallQueueEntry {
   disconnectedAt?: number;
   isConnected: boolean;
   assignedSalesRepId?: string;
+  // Media capabilities for connection method determination
+  hasMicrophone: boolean;
+  mediaCapabilities: MediaCapabilities;
 }
 
 export interface SalesRepConnection {
@@ -28,16 +38,24 @@ export interface CallQueueSummary {
   ageInSeconds?: number; // Optional - calculated on client side
   timeSinceDisconnectedSeconds?: number;
   assignedSalesRepId?: string;
+  // Simple microphone indicator for sales rep UI
+  hasMicrophone: boolean;
 }
 
 export interface ShopperMessage {
-  type: 'join_queue' | 'leave_queue';
+  type: 'join_queue' | 'leave_queue' | 'webrtc_offer' | 'webrtc_answer';
   shopperId: string;
+  // Media capabilities detected on client before joining queue
+  mediaCapabilities?: MediaCapabilities;
+  // WebRTC signaling data
+  sdp?: string;
 }
 
 export interface SalesRepMessage {
-  type: 'connect' | 'claim_call' | 'release_call';
+  type: 'connect' | 'claim_call' | 'release_call' | 'webrtc_offer' | 'webrtc_answer';
   salesRepId: string;
   shopperId?: string; // For claim_call and release_call
+  // WebRTC signaling data
+  sdp?: string;
 }
 

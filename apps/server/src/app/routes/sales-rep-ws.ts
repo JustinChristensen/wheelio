@@ -6,7 +6,8 @@ import {
   assignCallToSalesRep,
   releaseCallFromSalesRep,
   getCallQueueSummary,
-  broadcastQueueUpdate
+  broadcastQueueUpdate,
+  getShopperSocket
 } from '../services/call-queue';
 import { SalesRepMessage } from '../types/call-queue';
 
@@ -92,6 +93,43 @@ const salesRepWebSocket: FastifyPluginAsync = async function (fastify) {
                   type: 'error',
                   message: `Call from shopper ${data.shopperId} not found`
                 }));
+              }
+            }
+            break;
+          }
+
+          case 'webrtc_offer': {
+            if (data.shopperId && data.sdp && currentSalesRepId) {
+              // Forward offer to shopper
+              const shopperSocket = getShopperSocket(data.shopperId);
+              if (shopperSocket) {
+                shopperSocket.send(JSON.stringify({
+                  type: 'webrtc_offer_from_sales_rep',
+                  salesRepId: currentSalesRepId,
+                  sdp: data.sdp
+                }));
+                fastify.log.info(`Forwarded WebRTC offer from sales rep ${currentSalesRepId} to shopper ${data.shopperId}`);
+              } else {
+                socket.send(JSON.stringify({
+                  type: 'error',
+                  message: 'Shopper not available for WebRTC connection'
+                }));
+              }
+            }
+            break;
+          }
+
+          case 'webrtc_answer': {
+            if (data.shopperId && data.sdp && currentSalesRepId) {
+              // Forward answer to shopper
+              const shopperSocket = getShopperSocket(data.shopperId);
+              if (shopperSocket) {
+                shopperSocket.send(JSON.stringify({
+                  type: 'webrtc_answer_from_sales_rep',
+                  salesRepId: currentSalesRepId,
+                  sdp: data.sdp
+                }));
+                fastify.log.info(`Forwarded WebRTC answer from sales rep ${currentSalesRepId} to shopper ${data.shopperId}`);
               }
             }
             break;

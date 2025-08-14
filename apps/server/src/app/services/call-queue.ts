@@ -3,7 +3,8 @@ import {
   CallQueueEntry, 
   SalesRepConnection, 
   CallQueueSummary, 
-  CallQueueUpdate 
+  CallQueueUpdate,
+  MediaCapabilities
 } from '../types/call-queue';
 
 // In-memory storage for the call queue and sales rep connections
@@ -11,11 +12,26 @@ const callQueue = new Map<string, CallQueueEntry>();
 const salesRepConnections = new Map<string, SalesRepConnection>();
 
 /**
- * Add or update a shopper in the call queue
+ * Add or update a shopper in the call queue with media capabilities
  */
-export function addShopperToQueue(shopperId: string, socket: WebSocket): CallQueueEntry {
+export function addShopperToQueue(
+  shopperId: string, 
+  socket: WebSocket,
+  options?: {
+    hasMicrophone: boolean;
+    mediaCapabilities: MediaCapabilities;
+  }
+): CallQueueEntry {
   const now = Date.now();
   const existingEntry = callQueue.get(shopperId);
+  
+  // Default media capabilities if not provided
+  const defaultCapabilities: MediaCapabilities = {
+    hasAudioInput: false,
+    audioInputDevices: 0,
+    detectionError: 'No capabilities provided',
+    detectedAt: new Date()
+  };
   
   if (existingEntry) {
     // Shopper reconnecting - update their socket and mark as connected
@@ -23,7 +39,10 @@ export function addShopperToQueue(shopperId: string, socket: WebSocket): CallQue
       ...existingEntry,
       shopperSocket: socket,
       isConnected: true,
-      disconnectedAt: undefined
+      disconnectedAt: undefined,
+      // Update capabilities if provided
+      hasMicrophone: options?.hasMicrophone ?? existingEntry.hasMicrophone,
+      mediaCapabilities: options?.mediaCapabilities ?? existingEntry.mediaCapabilities
     };
     callQueue.set(shopperId, updatedEntry);
     return updatedEntry;
@@ -33,7 +52,9 @@ export function addShopperToQueue(shopperId: string, socket: WebSocket): CallQue
       shopperId,
       shopperSocket: socket,
       connectedAt: now,
-      isConnected: true
+      isConnected: true,
+      hasMicrophone: options?.hasMicrophone ?? false,
+      mediaCapabilities: options?.mediaCapabilities ?? defaultCapabilities
     };
     callQueue.set(shopperId, newEntry);
     return newEntry;
@@ -195,7 +216,8 @@ export function getCallQueueSummary(): CallQueueSummary[] {
       disconnectedAt: entry.disconnectedAt,
       isConnected: entry.isConnected,
       timeSinceDisconnectedSeconds,
-      assignedSalesRepId: entry.assignedSalesRepId
+      assignedSalesRepId: entry.assignedSalesRepId,
+      hasMicrophone: entry.hasMicrophone
     };
   });
 }
@@ -247,6 +269,22 @@ export function getShopperQueuePosition(shopperId: string): number {
  */
 export function getSalesRepConnections(): SalesRepConnection[] {
   return Array.from(salesRepConnections.values());
+}
+
+/**
+ * Get a specific sales rep's WebSocket connection
+ */
+export function getSalesRepSocket(salesRepId: string): WebSocket | null {
+  const connection = salesRepConnections.get(salesRepId);
+  return connection?.socket || null;
+}
+
+/**
+ * Get a specific shopper's WebSocket connection
+ */
+export function getShopperSocket(shopperId: string): WebSocket | null {
+  const entry = callQueue.get(shopperId);
+  return entry?.shopperSocket || null;
 }
 
 /**

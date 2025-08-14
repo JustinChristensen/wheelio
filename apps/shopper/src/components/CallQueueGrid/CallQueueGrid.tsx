@@ -35,9 +35,21 @@ function CallQueueTile({ call, currentTime, isDisabled = false, onAnswerCall }: 
       }`}
     >
       <div className="flex justify-between items-start mb-2">
-        <h3 className="font-semibold text-gray-900">
-          Shopper {call.shopperId.slice(-8)}
-        </h3>
+        <div className="flex items-center gap-2">
+          <h3 className="font-semibold text-gray-900">
+            Shopper {call.shopperId.slice(-8)}
+          </h3>
+          {call.hasMicrophone && (
+            <span 
+              role="img" 
+              aria-label="Microphone available for voice call"
+              className="text-sm"
+              title="Microphone available for voice call"
+            >
+              🎤
+            </span>
+          )}
+        </div>
         <div className="flex items-center gap-2">
           <div
             className={`w-2 h-2 rounded-full ${

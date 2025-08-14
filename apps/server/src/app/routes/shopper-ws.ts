@@ -5,7 +5,9 @@ import {
   markShopperDisconnected,
   removeShopperFromQueue,
   broadcastQueueUpdate,
-  getShopperQueuePosition
+  getShopperQueuePosition,
+  getCallQueueSummary,
+  getSalesRepSocket
 } from '../services/call-queue';
 import { ShopperMessage } from '../types/call-queue';
 
@@ -21,8 +23,19 @@ const shopperWebSocket: FastifyPluginAsync = async function (fastify) {
           case 'join_queue': {
             currentShopperId = data.shopperId;
             
-            // Add shopper to queue (or mark as reconnected)
-            addShopperToQueue(data.shopperId, socket);
+            // Determine if microphone is available based on media capabilities
+            const hasMicrophone = data.mediaCapabilities?.hasAudioInput === true;
+            
+            // Add shopper to queue with media capabilities
+            addShopperToQueue(data.shopperId, socket, {
+              hasMicrophone,
+              mediaCapabilities: data.mediaCapabilities || {
+                hasAudioInput: false,
+                audioInputDevices: 0,
+                detectionError: 'No capabilities provided',
+                detectedAt: new Date()
+              }
+            });
             
             // Calculate position in queue
             const position = getShopperQueuePosition(data.shopperId);
@@ -31,13 +44,14 @@ const shopperWebSocket: FastifyPluginAsync = async function (fastify) {
             socket.send(JSON.stringify({
               type: 'queue_joined',
               shopperId: data.shopperId,
-              position
+              position,
+              hasMicrophone
             }));
             
             // Broadcast update to sales reps
             broadcastQueueUpdate();
             
-            fastify.log.info(`Shopper ${data.shopperId} joined the call queue at position ${position}`);
+            fastify.log.info(`Shopper ${data.shopperId} joined queue at position ${position} (microphone: ${hasMicrophone ? 'yes' : 'no'})`);
             break;
           }
             
@@ -55,6 +69,54 @@ const shopperWebSocket: FastifyPluginAsync = async function (fastify) {
               broadcastQueueUpdate();
               
               fastify.log.info(`Shopper ${data.shopperId} left the call queue`);
+            }
+            break;
+          }
+
+          case 'webrtc_offer': {
+            if (data.shopperId && data.sdp) {
+              // Forward offer to assigned sales rep
+              const queueEntry = getCallQueueSummary().find(entry => entry.shopperId === data.shopperId);
+              if (queueEntry?.assignedSalesRepId) {
+                const salesRepSocket = getSalesRepSocket(queueEntry.assignedSalesRepId);
+                if (salesRepSocket) {
+                  salesRepSocket.send(JSON.stringify({
+                    type: 'webrtc_offer_from_shopper',
+                    shopperId: data.shopperId,
+                    sdp: data.sdp
+                  }));
+                  fastify.log.info(`Forwarded WebRTC offer from shopper ${data.shopperId} to sales rep ${queueEntry.assignedSalesRepId}`);
+                } else {
+                  socket.send(JSON.stringify({
+                    type: 'error',
+                    message: 'Sales rep not available for WebRTC connection'
+                  }));
+                }
+              } else {
+                socket.send(JSON.stringify({
+                  type: 'error',
+                  message: 'No sales rep assigned to handle WebRTC offer'
+                }));
+              }
+            }
+            break;
+          }
+
+          case 'webrtc_answer': {
+            if (data.shopperId && data.sdp) {
+              // Forward answer to assigned sales rep
+              const queueEntry = getCallQueueSummary().find(entry => entry.shopperId === data.shopperId);
+              if (queueEntry?.assignedSalesRepId) {
+                const salesRepSocket = getSalesRepSocket(queueEntry.assignedSalesRepId);
+                if (salesRepSocket) {
+                  salesRepSocket.send(JSON.stringify({
+                    type: 'webrtc_answer_from_shopper',
+                    shopperId: data.shopperId,
+                    sdp: data.sdp
+                  }));
+                  fastify.log.info(`Forwarded WebRTC answer from shopper ${data.shopperId} to sales rep ${queueEntry.assignedSalesRepId}`);
+                }
+              }
             }
             break;
           }

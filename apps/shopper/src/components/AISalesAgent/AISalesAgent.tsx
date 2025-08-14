@@ -355,6 +355,11 @@ const AISalesAgent: React.FC<AISalesAgentProps> = ({ isOpen, onToggle, onFilters
                 }`}
               >
                 {isCallConnected ? 'End Call' : 'Talk to Human Agent'}
+                {callState.hasMicrophone !== undefined && (
+                  <span className="ml-1" title={callState.hasMicrophone ? 'Voice call available' : 'Voice not available'}>
+                    {callState.hasMicrophone ? '🎤' : '📞'}
+                  </span>
+                )}
               </button>
             </div>
           </div>

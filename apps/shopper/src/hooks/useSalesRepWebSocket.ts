@@ -7,6 +7,7 @@ export interface CallQueueSummary {
   isConnected: boolean;
   timeSinceDisconnectedSeconds?: number;
   assignedSalesRepId?: string;
+  hasMicrophone: boolean;
 }
 
 interface UseSalesRepWebSocketReturn {

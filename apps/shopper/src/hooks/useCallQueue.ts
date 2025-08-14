@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { detectMediaCapabilities } from '../utils/media-detection';
 
 export interface CallQueueState {
   status: 'disconnected' | 'connecting' | 'in-queue' | 'connected-to-rep' | 'error';
@@ -7,6 +8,7 @@ export interface CallQueueState {
   assignedSalesRepId?: string;
   error?: string;
   lastMessage?: string; // Add this to store the latest status message
+  hasMicrophone?: boolean; // Add microphone detection result
 }
 
 interface CallQueueMessage {
@@ -16,6 +18,7 @@ interface CallQueueMessage {
   salesRepId?: string;
   previousSalesRepId?: string;
   message?: string;
+  hasMicrophone?: boolean;
 }
 
 export const useCallQueue = () => {
@@ -40,7 +43,7 @@ export const useCallQueue = () => {
     }
   }, []);
 
-  const connect = useCallback(() => {
+  const connect = useCallback(async () => {
     if (wsRef.current?.readyState === WebSocket.OPEN) {
       return; // Already connected
     }
@@ -48,6 +51,9 @@ export const useCallQueue = () => {
     setCallState(prev => ({ ...prev, status: 'connecting' }));
 
     try {
+      // Detect media capabilities before joining queue
+      const mediaCapabilities = await detectMediaCapabilities();
+      
       const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
       const wsUrl = `${protocol}//${window.location.hostname}:3000/ws/call`;
       
@@ -57,13 +63,19 @@ export const useCallQueue = () => {
       ws.onopen = () => {
         setReconnectAttempts(0);
         
-        // Generate shopper ID and join queue
+        // Generate shopper ID and join queue with media capabilities
         const shopperId = generateShopperId();
-        setCallState(prev => ({ ...prev, shopperId, status: 'connecting' }));
+        setCallState(prev => ({ 
+          ...prev, 
+          shopperId, 
+          status: 'connecting',
+          hasMicrophone: mediaCapabilities.hasAudioInput 
+        }));
         
         ws.send(JSON.stringify({
           type: 'join_queue',
-          shopperId
+          shopperId,
+          mediaCapabilities
         }));
       };
 
@@ -81,7 +93,8 @@ export const useCallQueue = () => {
                 ...prev,
                 status: 'in-queue',
                 position: data.position,
-                shopperId: data.shopperId
+                shopperId: data.shopperId,
+                hasMicrophone: data.hasMicrophone
               }));
               break;
               
