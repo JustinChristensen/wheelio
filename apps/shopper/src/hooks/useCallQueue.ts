@@ -6,13 +6,15 @@ export interface CallQueueState {
   shopperId?: string;
   assignedSalesRepId?: string;
   error?: string;
+  lastMessage?: string; // Add this to store the latest status message
 }
 
 interface CallQueueMessage {
-  type: 'connected' | 'queue_joined' | 'queue_left' | 'call_claimed' | 'error';
+  type: 'connected' | 'queue_joined' | 'queue_left' | 'call_claimed' | 'call_answered' | 'call_released' | 'error';
   shopperId?: string;
   position?: number;
   salesRepId?: string;
+  previousSalesRepId?: string;
   message?: string;
 }
 
@@ -84,10 +86,22 @@ export const useCallQueue = () => {
               break;
               
             case 'call_claimed':
+            case 'call_answered':
               setCallState(prev => ({
                 ...prev,
                 status: 'connected-to-rep',
-                assignedSalesRepId: data.salesRepId
+                assignedSalesRepId: data.salesRepId,
+                lastMessage: data.message
+              }));
+              break;
+              
+            case 'call_released':
+              setCallState(prev => ({
+                ...prev,
+                status: 'in-queue',
+                position: data.position,
+                assignedSalesRepId: undefined,
+                lastMessage: data.message
               }));
               break;
               

@@ -28,8 +28,10 @@ const CallStatus: React.FC<CallStatusProps> = ({ callState, onDisconnect }) => {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
           ),
-          title: 'Waiting for agent',
-          message: callState.position ? `Position ${callState.position} in queue` : 'In queue',
+          title: 'Waiting for an agent',
+          message: callState.position ? 
+            `You're #${callState.position} in line` : 
+            'You\'re in the queue',
           bgColor: 'bg-yellow-50',
           borderColor: 'border-yellow-200',
           textColor: 'text-yellow-800'
@@ -39,11 +41,13 @@ const CallStatus: React.FC<CallStatusProps> = ({ callState, onDisconnect }) => {
         return {
           icon: (
             <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
             </svg>
           ),
-          title: 'Connected to agent',
-          message: `Speaking with sales rep ${callState.assignedSalesRepId}`,
+          title: 'You\'re talking to',
+          message: callState.assignedSalesRepId ? 
+            `Sales Rep ${callState.assignedSalesRepId.slice(-6).toUpperCase()}` : 
+            'A sales representative',
           bgColor: 'bg-green-50',
           borderColor: 'border-green-200',
           textColor: 'text-green-800'

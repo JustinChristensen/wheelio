@@ -84,17 +84,65 @@ export function removeSalesRepConnection(salesRepId: string): boolean {
 }
 
 /**
+ * Check if a sales rep is currently handling any calls
+ */
+export function isSalesRepBusy(salesRepId: string): boolean {
+  for (const entry of callQueue.values()) {
+    if (entry.assignedSalesRepId === salesRepId) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * Get the call that a sales rep is currently handling (if any)
+ */
+export function getSalesRepCurrentCall(salesRepId: string): CallQueueEntry | null {
+  for (const entry of callQueue.values()) {
+    if (entry.assignedSalesRepId === salesRepId) {
+      return entry;
+    }
+  }
+  return null;
+}
+
+/**
  * Assign a call to a sales rep
  */
 export function assignCallToSalesRep(shopperId: string, salesRepId: string): CallQueueEntry | null {
   const entry = callQueue.get(shopperId);
   if (!entry) return null;
   
+  // Check if the call is already assigned to someone else
+  if (entry.assignedSalesRepId && entry.assignedSalesRepId !== salesRepId) {
+    return null; // Call already claimed by another sales rep
+  }
+  
+  // Check if the sales rep is already busy with another call
+  if (isSalesRepBusy(salesRepId) && entry.assignedSalesRepId !== salesRepId) {
+    return null; // Sales rep is already handling another call
+  }
+  
   const updatedEntry: CallQueueEntry = {
     ...entry,
     assignedSalesRepId: salesRepId
   };
   callQueue.set(shopperId, updatedEntry);
+  
+  // Notify the shopper that their call has been answered
+  if (entry.shopperSocket && entry.shopperSocket.readyState === 1) { // WebSocket.OPEN
+    try {
+      entry.shopperSocket.send(JSON.stringify({
+        type: 'call_answered',
+        salesRepId: salesRepId,
+        message: 'A sales representative has answered your call'
+      }));
+    } catch (error) {
+      console.error(`Failed to notify shopper ${shopperId} of call assignment:`, error);
+    }
+  }
+  
   return updatedEntry;
 }
 
@@ -105,11 +153,29 @@ export function releaseCallFromSalesRep(shopperId: string): CallQueueEntry | nul
   const entry = callQueue.get(shopperId);
   if (!entry) return null;
   
+  const previousSalesRepId = entry.assignedSalesRepId;
+  
   const updatedEntry: CallQueueEntry = {
     ...entry,
     assignedSalesRepId: undefined
   };
   callQueue.set(shopperId, updatedEntry);
+  
+  // Notify the shopper that their call has been released (back to queue)
+  if (entry.shopperSocket && entry.shopperSocket.readyState === 1) { // WebSocket.OPEN
+    try {
+      const position = getShopperQueuePosition(shopperId);
+      entry.shopperSocket.send(JSON.stringify({
+        type: 'call_released',
+        previousSalesRepId: previousSalesRepId,
+        position: position,
+        message: 'Your call has been returned to the queue'
+      }));
+    } catch (error) {
+      console.error(`Failed to notify shopper ${shopperId} of call release:`, error);
+    }
+  }
+  
   return updatedEntry;
 }
 
