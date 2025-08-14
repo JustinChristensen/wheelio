@@ -3,11 +3,12 @@ import { CallQueueSummary } from '../../hooks/useSalesRepWebSocket';
 
 interface CallQueueTileProps {
   call: CallQueueSummary;
-  onClick: (shopperId: string) => void;
   currentTime: number; // Add current time as a prop to trigger re-renders
+  isDisabled?: boolean; // Add disabled state
+  onAnswerCall?: (shopperId: string) => void; // Separate handler for answer call button
 }
 
-function CallQueueTile({ call, onClick, currentTime }: CallQueueTileProps) {
+function CallQueueTile({ call, currentTime, isDisabled = false, onAnswerCall }: CallQueueTileProps) {
   const formatTime = (seconds: number): string => {
     const minutes = Math.floor(seconds / 60);
     const remainingSeconds = seconds % 60;
@@ -23,14 +24,15 @@ function CallQueueTile({ call, onClick, currentTime }: CallQueueTileProps) {
 
   return (
     <div
-      className={`p-4 border rounded-lg cursor-pointer transition-all duration-200 hover:shadow-md ${
-        call.isConnected
+      className={`p-4 border rounded-lg transition-all duration-200 ${
+        isDisabled
+          ? 'bg-gray-50 border-gray-200 opacity-60'
+          : call.isConnected
           ? call.assignedSalesRepId
-            ? 'bg-yellow-50 border-yellow-200 hover:bg-yellow-100'
-            : 'bg-green-50 border-green-200 hover:bg-green-100'
-          : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
+            ? 'bg-yellow-50 border-yellow-200 hover:bg-yellow-100 hover:shadow-md'
+            : 'bg-green-50 border-green-200 hover:bg-green-100 hover:shadow-md'
+          : 'bg-gray-50 border-gray-200 hover:bg-gray-100 hover:shadow-md'
       }`}
-      onClick={() => onClick(call.shopperId)}
     >
       <div className="flex justify-between items-start mb-2">
         <h3 className="font-semibold text-gray-900">
@@ -83,9 +85,22 @@ function CallQueueTile({ call, onClick, currentTime }: CallQueueTileProps) {
       </div>
 
       {call.isConnected && !call.assignedSalesRepId && (
-        <div className="mt-3 px-2 py-1 bg-green-100 border border-green-200 rounded text-xs font-medium text-green-700 text-center">
-          Answer Call
-        </div>
+        <button
+          onClick={(e) => {
+            e.stopPropagation(); // Prevent tile click
+            if (!isDisabled && onAnswerCall) {
+              onAnswerCall(call.shopperId);
+            }
+          }}
+          disabled={isDisabled}
+          className={`mt-3 w-full px-2 py-1 border rounded text-xs font-medium transition-colors ${
+            isDisabled
+              ? 'bg-gray-100 border-gray-200 text-gray-400 cursor-not-allowed'
+              : 'bg-green-100 border-green-200 text-green-700 hover:bg-green-200 hover:border-green-300 cursor-pointer'
+          }`}
+        >
+          {isDisabled ? 'Busy with another call' : 'Answer Call'}
+        </button>
       )}
     </div>
   );
@@ -93,10 +108,11 @@ function CallQueueTile({ call, onClick, currentTime }: CallQueueTileProps) {
 
 interface CallQueueGridProps {
   queue: CallQueueSummary[];
-  onCallClick: (shopperId: string) => void;
+  isBusy?: boolean; // Add busy state to disable buttons
+  onAnswerCall?: (shopperId: string) => void; // Handler for answer call button
 }
 
-export function CallQueueGrid({ queue, onCallClick }: CallQueueGridProps) {
+export function CallQueueGrid({ queue, isBusy = false, onAnswerCall }: CallQueueGridProps) {
   const [currentTime, setCurrentTime] = useState(Date.now());
 
   // Update current time every 10 seconds to trigger re-renders
@@ -153,8 +169,9 @@ export function CallQueueGrid({ queue, onCallClick }: CallQueueGridProps) {
         <CallQueueTile
           key={call.shopperId}
           call={call}
-          onClick={onCallClick}
           currentTime={currentTime}
+          isDisabled={isBusy && !call.assignedSalesRepId}
+          onAnswerCall={onAnswerCall}
         />
       ))}
     </div>

@@ -11,11 +11,22 @@ export function SalesRepPage() {
     queue,
     isConnected,
     connectionStatus,
-    error
+    error,
+    claimCall,
+    releaseCall,
+    currentCall,
+    isBusy
   } = useSalesRepWebSocket(SALES_REP_ID);
 
-  const handleCallClick = (shopperId: string) => {
-    // For now, just log the click. We'll implement actions in the next step
+  const handleAnswerCall = (shopperId: string) => {
+    if (isBusy) {
+      return; // Don't allow claiming calls when busy
+    }
+    
+    const call = queue.find(c => c.shopperId === shopperId);
+    if (call && call.isConnected && !call.assignedSalesRepId) {
+      claimCall(shopperId);
+    }
   };
 
   return (
@@ -38,6 +49,27 @@ export function SalesRepPage() {
         />
 
         <div className="bg-white rounded-lg border border-gray-200 p-6">
+          {currentCall && (
+            <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-lg font-semibold text-blue-900">
+                    Currently Handling Call
+                  </h3>
+                  <p className="text-sm text-blue-700">
+                    Shopper {currentCall.shopperId.slice(-8)} • Connected at {new Date(currentCall.connectedAt).toLocaleTimeString()}
+                  </p>
+                </div>
+                <button
+                  onClick={() => releaseCall(currentCall.shopperId)}
+                  className="px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-md hover:bg-red-700 transition-colors"
+                >
+                  Release Call
+                </button>
+              </div>
+            </div>
+          )}
+          
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-xl font-semibold text-gray-900">
               Call Queue
@@ -60,7 +92,8 @@ export function SalesRepPage() {
 
           <CallQueueGrid
             queue={queue}
-            onCallClick={handleCallClick}
+            isBusy={isBusy}
+            onAnswerCall={handleAnswerCall}
           />
         </div>
       </div>

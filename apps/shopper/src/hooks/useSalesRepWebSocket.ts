@@ -16,6 +16,8 @@ interface UseSalesRepWebSocketReturn {
   error: string | null;
   claimCall: (shopperId: string) => void;
   releaseCall: (shopperId: string) => void;
+  currentCall: CallQueueSummary | null;
+  isBusy: boolean;
 }
 
 export function useSalesRepWebSocket(salesRepId: string): UseSalesRepWebSocketReturn {
@@ -23,6 +25,8 @@ export function useSalesRepWebSocket(salesRepId: string): UseSalesRepWebSocketRe
   const [isConnected, setIsConnected] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'disconnected' | 'error'>('disconnected');
   const [error, setError] = useState<string | null>(null);
+  const [currentCall, setCurrentCall] = useState<CallQueueSummary | null>(null);
+  const [isBusy, setIsBusy] = useState(false);
   const socketRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -80,21 +84,49 @@ export function useSalesRepWebSocket(salesRepId: string): UseSalesRepWebSocketRe
           const data = JSON.parse(event.data);
           
           switch (data.type) {
-            case 'queue_update':
+            case 'queue_update': {
               setQueue(data.queue);
+              // Update current call status based on queue data
+              const myAssignedCall = data.queue.find((call: CallQueueSummary) => 
+                call.assignedSalesRepId === salesRepId
+              );
+              setCurrentCall(myAssignedCall || null);
+              setIsBusy(!!myAssignedCall);
               break;
-            case 'connected':
+            }
+            case 'connected': {
               console.log('Sales rep connected:', data.message);
               break;
-            case 'call_claimed':
+            }
+            case 'call_claimed': {
               console.log('Call claimed:', data);
+              // If this sales rep claimed the call, update their busy status immediately
+              if (data.salesRepId === salesRepId) {
+                setIsBusy(true);
+              }
               break;
-            case 'call_released':
+            }
+            case 'call_released': {
               console.log('Call released:', data);
+              // If this sales rep released the call, update their busy status immediately
+              if (data.salesRepId === salesRepId) {
+                setCurrentCall(null);
+                setIsBusy(false);
+              }
               break;
-            case 'error':
+            }
+            case 'status_update': {
+              // Handle status updates from the server
+              if (data.salesRepId === salesRepId) {
+                setCurrentCall(data.currentCall);
+                setIsBusy(data.isBusy);
+              }
+              break;
+            }
+            case 'error': {
               setError(data.message);
               break;
+            }
           }
         } catch (err) {
           console.error('Failed to parse WebSocket message:', err);
@@ -135,6 +167,8 @@ export function useSalesRepWebSocket(salesRepId: string): UseSalesRepWebSocketRe
     connectionStatus,
     error,
     claimCall,
-    releaseCall
+    releaseCall,
+    currentCall,
+    isBusy
   };
 }
