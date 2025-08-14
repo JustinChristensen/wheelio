@@ -25,7 +25,7 @@ export interface CallQueueSummary {
   connectedAt: number;
   disconnectedAt?: number;
   isConnected: boolean;
-  ageInSeconds: number;
+  ageInSeconds?: number; // Optional - calculated on client side
   timeSinceDisconnectedSeconds?: number;
   assignedSalesRepId?: string;
 }

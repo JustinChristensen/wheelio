@@ -5,7 +5,6 @@ export interface CallQueueSummary {
   connectedAt: number;
   disconnectedAt?: number;
   isConnected: boolean;
-  ageInSeconds: number;
   timeSinceDisconnectedSeconds?: number;
   assignedSalesRepId?: string;
 }
@@ -26,76 +25,6 @@ export function useSalesRepWebSocket(salesRepId: string): UseSalesRepWebSocketRe
   const [error, setError] = useState<string | null>(null);
   const socketRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-
-  const connect = useCallback(() => {
-    if (socketRef.current?.readyState === WebSocket.OPEN) {
-      return;
-    }
-
-    setConnectionStatus('connecting');
-    setError(null);
-
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsUrl = `${protocol}//${window.location.hostname}:3000/ws/calls/monitor`;
-    
-    const socket = new WebSocket(wsUrl);
-    socketRef.current = socket;
-
-    socket.onopen = () => {
-      setIsConnected(true);
-      setConnectionStatus('connected');
-      setError(null);
-      
-      // Send connect message to identify as sales rep
-      socket.send(JSON.stringify({
-        type: 'connect',
-        salesRepId
-      }));
-    };
-
-    socket.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        
-        switch (data.type) {
-          case 'queue_update':
-            setQueue(data.queue);
-            break;
-          case 'connected':
-            console.log('Sales rep connected:', data.message);
-            break;
-          case 'call_claimed':
-            console.log('Call claimed:', data);
-            break;
-          case 'call_released':
-            console.log('Call released:', data);
-            break;
-          case 'error':
-            setError(data.message);
-            break;
-        }
-      } catch (err) {
-        console.error('Failed to parse WebSocket message:', err);
-      }
-    };
-
-    socket.onclose = () => {
-      setIsConnected(false);
-      setConnectionStatus('disconnected');
-      socketRef.current = null;
-      
-      // Attempt to reconnect after a delay
-      reconnectTimeoutRef.current = setTimeout(() => {
-        connect();
-      }, 3000);
-    };
-
-    socket.onerror = (error) => {
-      console.error('WebSocket error:', error);
-      setError('WebSocket connection error');
-      setConnectionStatus('error');
-    };
-  }, [salesRepId]);
 
   const claimCall = useCallback((shopperId: string) => {
     if (socketRef.current?.readyState === WebSocket.OPEN) {
@@ -118,17 +47,87 @@ export function useSalesRepWebSocket(salesRepId: string): UseSalesRepWebSocketRe
   }, [salesRepId]);
 
   useEffect(() => {
-    connect();
+    // Connection logic moved directly into useEffect to avoid dependency issues
+    const connectWebSocket = () => {
+      // Prevent multiple connections - if socket already exists, don't create another
+      if (socketRef.current) {
+        return;
+      }
+
+      setConnectionStatus('connecting');
+      setError(null);
+
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const wsUrl = `${protocol}//${window.location.hostname}:3000/ws/calls/monitor`;
+
+      const socket = new WebSocket(wsUrl);
+      socketRef.current = socket;
+
+      socket.onopen = () => {
+        setIsConnected(true);
+        setConnectionStatus('connected');
+        setError(null);
+        
+        // Send connect message to identify as sales rep
+        socket.send(JSON.stringify({
+          type: 'connect',
+          salesRepId
+        }));
+      };
+
+      socket.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          
+          switch (data.type) {
+            case 'queue_update':
+              setQueue(data.queue);
+              break;
+            case 'connected':
+              console.log('Sales rep connected:', data.message);
+              break;
+            case 'call_claimed':
+              console.log('Call claimed:', data);
+              break;
+            case 'call_released':
+              console.log('Call released:', data);
+              break;
+            case 'error':
+              setError(data.message);
+              break;
+          }
+        } catch (err) {
+          console.error('Failed to parse WebSocket message:', err);
+        }
+      };
+
+      socket.onclose = () => {
+        setIsConnected(false);
+        setConnectionStatus('disconnected');
+        socketRef.current = null; // Clear the ref so reconnection can happen
+        
+        // Attempt to reconnect after a delay
+        reconnectTimeoutRef.current = setTimeout(() => {
+          connectWebSocket();
+        }, 3000);
+      };
+
+      socket.onerror = (error) => {
+        console.error('WebSocket error:', error);
+        setError('WebSocket connection error');
+        setConnectionStatus('error');
+      };
+    };
+
+    connectWebSocket();
 
     return () => {
+      console.log('running cleanup')
       if (reconnectTimeoutRef.current) {
         clearTimeout(reconnectTimeoutRef.current);
       }
-      if (socketRef.current) {
-        socketRef.current.close();
-      }
     };
-  }, [connect]);
+  }, [salesRepId]); // Only depend on salesRepId
 
   return {
     queue,

@@ -1,11 +1,13 @@
+import { useState, useEffect } from 'react';
 import { CallQueueSummary } from '../../hooks/useSalesRepWebSocket';
 
 interface CallQueueTileProps {
   call: CallQueueSummary;
   onClick: (shopperId: string) => void;
+  currentTime: number; // Add current time as a prop to trigger re-renders
 }
 
-function CallQueueTile({ call, onClick }: CallQueueTileProps) {
+function CallQueueTile({ call, onClick, currentTime }: CallQueueTileProps) {
   const formatTime = (seconds: number): string => {
     const minutes = Math.floor(seconds / 60);
     const remainingSeconds = seconds % 60;
@@ -15,6 +17,9 @@ function CallQueueTile({ call, onClick }: CallQueueTileProps) {
   const formatDate = (timestamp: number): string => {
     return new Date(timestamp).toLocaleTimeString();
   };
+
+  // Calculate age using the current time from parent
+  const ageInSeconds = Math.floor((currentTime - call.connectedAt) / 1000);
 
   return (
     <div
@@ -53,7 +58,7 @@ function CallQueueTile({ call, onClick }: CallQueueTileProps) {
           <div className="flex justify-between">
             <span>Wait time:</span>
             <span className="font-mono font-medium text-blue-600">
-              {formatTime(call.ageInSeconds)}
+              {formatTime(ageInSeconds)}
             </span>
           </div>
         ) : (
@@ -79,7 +84,7 @@ function CallQueueTile({ call, onClick }: CallQueueTileProps) {
 
       {call.isConnected && !call.assignedSalesRepId && (
         <div className="mt-3 px-2 py-1 bg-green-100 border border-green-200 rounded text-xs font-medium text-green-700 text-center">
-          Available to claim
+          Answer Call
         </div>
       )}
     </div>
@@ -92,6 +97,17 @@ interface CallQueueGridProps {
 }
 
 export function CallQueueGrid({ queue, onCallClick }: CallQueueGridProps) {
+  const [currentTime, setCurrentTime] = useState(Date.now());
+
+  // Update current time every 10 seconds to trigger re-renders
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(Date.now());
+    }, 10000);
+
+    return () => clearInterval(timer);
+  }, []);
+
   // Sort queue: connected and unassigned first, then by connection time
   const sortedQueue = [...queue].sort((a, b) => {
     // Priority 1: Connected and available calls
@@ -138,6 +154,7 @@ export function CallQueueGrid({ queue, onCallClick }: CallQueueGridProps) {
           key={call.shopperId}
           call={call}
           onClick={onCallClick}
+          currentTime={currentTime}
         />
       ))}
     </div>

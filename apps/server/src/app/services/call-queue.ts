@@ -119,7 +119,6 @@ export function releaseCallFromSalesRep(shopperId: string): CallQueueEntry | nul
 export function getCallQueueSummary(): CallQueueSummary[] {
   const now = Date.now();
   return Array.from(callQueue.values()).map(entry => {
-    const ageInSeconds = Math.floor((now - entry.connectedAt) / 1000);
     const timeSinceDisconnectedSeconds = entry.disconnectedAt 
       ? Math.floor((now - entry.disconnectedAt) / 1000)
       : undefined;
@@ -129,7 +128,6 @@ export function getCallQueueSummary(): CallQueueSummary[] {
       connectedAt: entry.connectedAt,
       disconnectedAt: entry.disconnectedAt,
       isConnected: entry.isConnected,
-      ageInSeconds,
       timeSinceDisconnectedSeconds,
       assignedSalesRepId: entry.assignedSalesRepId
     };
@@ -205,3 +203,25 @@ export function cleanupOldDisconnectedCalls(maxAgeMinutes = 30): number {
   
   return cleanedCount;
 }
+
+/**
+ * Periodic cleanup of old disconnected calls
+ * Runs every 30 seconds and removes calls disconnected for more than 60 seconds
+ */
+function startPeriodicCleanup(): () => void {
+  const cleanupInterval = setInterval(() => {
+    const cleanedCount = cleanupOldDisconnectedCalls(1); // 1 minute = 60 seconds
+    
+    if (cleanedCount > 0) {
+      console.log(`Periodic cleanup: Removed ${cleanedCount} old disconnected calls`);
+      // Broadcast updated queue to all sales reps after cleanup
+      broadcastQueueUpdate();
+    }
+  }, 30000); // Run every 30 seconds
+  
+  // Optional: Return cleanup function for testing or shutdown
+  return () => clearInterval(cleanupInterval);
+}
+
+// Start the periodic cleanup when the module loads
+startPeriodicCleanup();

@@ -3,7 +3,7 @@ import ConnectionStatus from '../ConnectionStatus/ConnectionStatus';
 import CallQueueGrid from '../CallQueueGrid/CallQueueGrid';
 
 // For now, we'll use a hardcoded sales rep ID. In a real app, this would come from authentication
-const SALES_REP_ID = 'sales-rep-' + Math.random().toString(36).substr(2, 9);
+const SALES_REP_ID = 'sales-rep-aij0c1sfo';
 
 export function SalesRepPage() {
   
@@ -16,7 +16,6 @@ export function SalesRepPage() {
 
   const handleCallClick = (shopperId: string) => {
     // For now, just log the click. We'll implement actions in the next step
-    console.log('Call clicked:', shopperId);
   };
 
   return (
