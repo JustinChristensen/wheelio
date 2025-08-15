@@ -12,18 +12,21 @@ export interface CallQueueState {
 }
 
 interface CallQueueMessage {
-  type: 'connected' | 'queue_joined' | 'queue_left' | 'call_claimed' | 'call_answered' | 'call_released' | 'error';
+  type: 'connected' | 'queue_joined' | 'queue_left' | 'call_claimed' | 'call_answered' | 'call_released' | 'error' | 'sdp_answer';
   shopperId?: string;
   position?: number;
   salesRepId?: string;
   previousSalesRepId?: string;
   message?: string;
   hasMicrophone?: boolean;
+  sdpOffer?: RTCSessionDescriptionInit; // SDP offer from sales rep when answering a call
+  sdpAnswer?: RTCSessionDescriptionInit; // SDP answer from shopper back to sales rep
 }
 
 export const useCallQueue = () => {
   const [callState, setCallState] = useState<CallQueueState>({ status: 'disconnected' });
   const wsRef = useRef<WebSocket | null>(null);
+  const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [reconnectAttempts, setReconnectAttempts] = useState(0);
   const maxReconnectAttempts = 5;
@@ -32,10 +35,89 @@ export const useCallQueue = () => {
     return `shopper_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
   }, []);
 
+  const createPeerConnection = useCallback(() => {
+    const pc = new RTCPeerConnection({
+      iceServers: [
+        { urls: 'stun:stun.l.google.com:19302' }
+      ]
+    });
+
+    // Set up event handlers
+    pc.oniceconnectionstatechange = () => {
+      console.log('ICE connection state:', pc.iceConnectionState);
+    };
+
+    pc.onconnectionstatechange = () => {
+      console.log('Connection state:', pc.connectionState);
+    };
+
+    pc.ontrack = (event) => {
+      console.log('Received remote track:', event.track.kind);
+      // TODO: Handle remote audio stream
+    };
+
+    return pc;
+  }, []);
+
+  const handleSdpOffer = useCallback(async (sdpOffer: string) => {
+    try {
+      // Create new peer connection if needed
+      if (!peerConnectionRef.current) {
+        peerConnectionRef.current = createPeerConnection();
+      }
+
+      const pc = peerConnectionRef.current;
+
+      // Set the remote description (SDP offer from sales rep)
+      await pc.setRemoteDescription(new RTCSessionDescription({
+        type: 'offer',
+        sdp: sdpOffer
+      }));
+
+      // Get user media if we have microphone access
+      if (callState.hasMicrophone) {
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          stream.getTracks().forEach(track => {
+            pc.addTrack(track, stream);
+          });
+        } catch (error) {
+          console.warn('Failed to get user media:', error);
+        }
+      }
+
+      // Create and set local description (SDP answer)
+      const answer = await pc.createAnswer();
+      await pc.setLocalDescription(answer);
+
+      // Send SDP answer back to sales rep via WebSocket
+      if (wsRef.current && callState.shopperId) {
+        wsRef.current.send(JSON.stringify({
+          type: 'sdp_answer',
+          shopperId: callState.shopperId,
+          sdpAnswer: pc.localDescription
+        }));
+      }
+
+      console.log('SDP answer sent to sales rep');
+    } catch (error) {
+      console.error('Failed to handle SDP offer:', error);
+      setCallState(prev => ({
+        ...prev,
+        status: 'error',
+        error: 'Failed to establish audio connection'
+      }));
+    }
+  }, [callState.hasMicrophone, callState.shopperId, createPeerConnection]);
+
   const cleanup = useCallback(() => {
     if (wsRef.current) {
       wsRef.current.close();
       wsRef.current = null;
+    }
+    if (peerConnectionRef.current) {
+      peerConnectionRef.current.close();
+      peerConnectionRef.current = null;
     }
     if (reconnectTimeoutRef.current) {
       clearTimeout(reconnectTimeoutRef.current);
@@ -99,6 +181,14 @@ export const useCallQueue = () => {
               break;
               
             case 'call_claimed':
+              setCallState(prev => ({
+                ...prev,
+                status: 'connected-to-rep',
+                assignedSalesRepId: data.salesRepId,
+                lastMessage: data.message
+              }));
+              break;
+              
             case 'call_answered':
               setCallState(prev => ({
                 ...prev,
@@ -106,6 +196,11 @@ export const useCallQueue = () => {
                 assignedSalesRepId: data.salesRepId,
                 lastMessage: data.message
               }));
+              
+              // Handle SDP offer if provided
+              if (data.sdpOffer?.sdp) {
+                handleSdpOffer(data.sdpOffer.sdp);
+              }
               break;
               
             case 'call_released':
@@ -180,7 +275,7 @@ export const useCallQueue = () => {
         error: 'Failed to connect to call service'
       }));
     }
-  }, [callState.status, reconnectAttempts, generateShopperId]);
+  }, [callState.status, reconnectAttempts, generateShopperId, handleSdpOffer]);
 
   const disconnect = useCallback(() => {
     const currentShopperId = callState.shopperId;
@@ -207,6 +302,7 @@ export const useCallQueue = () => {
     callState,
     connect,
     disconnect,
-    isConnected: callState.status !== 'disconnected' && callState.status !== 'error'
+    isConnected: callState.status !== 'disconnected' && callState.status !== 'error',
+    peerConnection: peerConnectionRef.current
   };
 };
