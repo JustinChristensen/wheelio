@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { detectMediaCapabilities, type MediaCapabilities } from '../utils/media-detection';
+import { detectMediaCapabilities } from '../utils/media-detection';
 
 export interface CallQueueSummary {
   shopperId: string;
@@ -31,11 +31,11 @@ export function useSalesRepWebSocket(salesRepId: string): UseSalesRepWebSocketRe
   const [isBusy, setIsBusy] = useState(false);
   
   // WebRTC related state
-  const [mediaCapabilities, setMediaCapabilities] = useState<MediaCapabilities | null>(null);
   const [isMediaReady, setIsMediaReady] = useState(false);
-  const [peerConnection, setPeerConnection] = useState<RTCPeerConnection | null>(null);
-  const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   
+  // Use refs for WebRTC objects since they don't trigger re-renders
+  const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
+  const localStreamRef = useRef<MediaStream | null>(null);
   const socketRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -44,7 +44,6 @@ export function useSalesRepWebSocket(salesRepId: string): UseSalesRepWebSocketRe
     try {
       // Detect media capabilities first
       const capabilities = await detectMediaCapabilities();
-      setMediaCapabilities(capabilities);
 
       if (!capabilities.hasAudioInput) {
         throw new Error('No audio input available for WebRTC');
@@ -68,8 +67,8 @@ export function useSalesRepWebSocket(salesRepId: string): UseSalesRepWebSocketRe
         pc.addTrack(track, stream);
       });
 
-      setLocalStream(stream);
-      setPeerConnection(pc);
+      localStreamRef.current = stream;
+      peerConnectionRef.current = pc;
       setIsMediaReady(true);
 
       console.log('WebRTC initialized successfully');
@@ -89,7 +88,7 @@ export function useSalesRepWebSocket(salesRepId: string): UseSalesRepWebSocketRe
 
     try {
       // Initialize WebRTC if not already ready
-      let pc = peerConnection;
+      let pc = peerConnectionRef.current;
       if (!pc || !isMediaReady) {
         pc = await initializeWebRTC();
         if (!pc) {
@@ -119,7 +118,7 @@ export function useSalesRepWebSocket(salesRepId: string): UseSalesRepWebSocketRe
       console.error('Failed to claim call with WebRTC offer:', error);
       setError(`Failed to start call: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
-  }, [salesRepId, peerConnection, isMediaReady, initializeWebRTC]);
+  }, [salesRepId, isMediaReady, initializeWebRTC]);
 
   const releaseCall = useCallback((shopperId: string) => {
     if (socketRef.current?.readyState === WebSocket.OPEN) {
@@ -197,10 +196,10 @@ export function useSalesRepWebSocket(salesRepId: string): UseSalesRepWebSocketRe
               break;
             }
             case 'sdp_answer': {
-              console.log('Received SDP answer from shopper:', data, peerConnection);
+              console.log('Received SDP answer from shopper:', data, peerConnectionRef.current);
               // Configure the peer connection with the shopper's SDP answer
-              if (peerConnection && data.sdpAnswer) {
-                peerConnection.setRemoteDescription(new RTCSessionDescription(data.sdpAnswer))
+              if (peerConnectionRef.current && data.sdpAnswer) {
+                peerConnectionRef.current.setRemoteDescription(new RTCSessionDescription(data.sdpAnswer))
                   .then(() => {
                     console.log('Successfully set remote description with SDP answer');
                   }, (error) => {
@@ -254,19 +253,19 @@ export function useSalesRepWebSocket(salesRepId: string): UseSalesRepWebSocketRe
         clearTimeout(reconnectTimeoutRef.current);
       }
     };
-  }, [salesRepId, peerConnection]); // Include peerConnection dependency for sdp_answer handling
+  }, [salesRepId]); // Remove peerConnection dependency since it's now a ref
 
   // Separate useEffect for WebRTC cleanup
   useEffect(() => {
     return () => {
-      if (localStream) {
-        localStream.getTracks().forEach(track => track.stop());
+      if (localStreamRef.current) {
+        localStreamRef.current.getTracks().forEach((track: MediaStreamTrack) => track.stop());
       }
-      if (peerConnection) {
-        peerConnection.close();
+      if (peerConnectionRef.current) {
+        peerConnectionRef.current.close();
       }
     };
-  }, [localStream, peerConnection]);
+  }, []); // No dependencies needed since refs don't change
 
   return {
     queue,
