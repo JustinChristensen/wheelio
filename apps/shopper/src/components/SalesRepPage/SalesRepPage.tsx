@@ -15,7 +15,12 @@ export function SalesRepPage() {
     claimCall,
     releaseCall,
     currentCall,
-    isBusy
+    isBusy,
+    // WebRTC related properties
+    mediaCapabilities,
+    isMediaReady,
+    peerConnection,
+    localStream
   } = useSalesRepWebSocket(SALES_REP_ID);
 
   const handleAnswerCall = (shopperId: string) => {
@@ -47,6 +52,37 @@ export function SalesRepPage() {
           error={error}
           salesRepId={SALES_REP_ID}
         />
+
+        {/* Media Status Section */}
+        <div className="mb-6 p-4 bg-gray-50 border border-gray-200 rounded-lg">
+          <h3 className="text-sm font-semibold text-gray-700 mb-2">Audio Status</h3>
+          <div className="flex items-center space-x-4 text-sm">
+            <div className="flex items-center space-x-2">
+              <div className={`w-2 h-2 rounded-full ${isMediaReady ? 'bg-green-400' : 'bg-red-400'}`} />
+              <span className={isMediaReady ? 'text-green-700' : 'text-red-700'}>
+                {isMediaReady ? 'Audio Ready' : 'Audio Not Ready'}
+              </span>
+            </div>
+            {mediaCapabilities && (
+              <div className="text-gray-600">
+                {mediaCapabilities.hasAudioInput ? 
+                  `${mediaCapabilities.audioInputDevices} audio device(s) detected` : 
+                  'No audio input detected'
+                }
+              </div>
+            )}
+            {peerConnection && (
+              <div className="text-gray-600">
+                WebRTC: {peerConnection.connectionState}
+              </div>
+            )}
+            {localStream && (
+              <div className="text-gray-600">
+                Local stream: {localStream.getAudioTracks().length} audio track(s)
+              </div>
+            )}
+          </div>
+        </div>
 
         <div className="bg-white rounded-lg border border-gray-200 p-6">
           {currentCall && (

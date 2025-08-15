@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { detectMediaCapabilities, type MediaCapabilities } from '../utils/media-detection';
 
 export interface CallQueueSummary {
   shopperId: string;
@@ -19,6 +20,11 @@ interface UseSalesRepWebSocketReturn {
   releaseCall: (shopperId: string) => void;
   currentCall: CallQueueSummary | null;
   isBusy: boolean;
+  // WebRTC related properties
+  mediaCapabilities: MediaCapabilities | null;
+  isMediaReady: boolean;
+  peerConnection: RTCPeerConnection | null;
+  localStream: MediaStream | null;
 }
 
 export function useSalesRepWebSocket(salesRepId: string): UseSalesRepWebSocketReturn {
@@ -28,18 +34,97 @@ export function useSalesRepWebSocket(salesRepId: string): UseSalesRepWebSocketRe
   const [error, setError] = useState<string | null>(null);
   const [currentCall, setCurrentCall] = useState<CallQueueSummary | null>(null);
   const [isBusy, setIsBusy] = useState(false);
+  
+  // WebRTC related state
+  const [mediaCapabilities, setMediaCapabilities] = useState<MediaCapabilities | null>(null);
+  const [isMediaReady, setIsMediaReady] = useState(false);
+  const [peerConnection, setPeerConnection] = useState<RTCPeerConnection | null>(null);
+  const [localStream, setLocalStream] = useState<MediaStream | null>(null);
+  
   const socketRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  const claimCall = useCallback((shopperId: string) => {
-    if (socketRef.current?.readyState === WebSocket.OPEN) {
+  // Initialize WebRTC with media detection
+  const initializeWebRTC = useCallback(async (): Promise<RTCPeerConnection | null> => {
+    try {
+      // Detect media capabilities first
+      const capabilities = await detectMediaCapabilities();
+      setMediaCapabilities(capabilities);
+
+      if (!capabilities.hasAudioInput) {
+        throw new Error('No audio input available for WebRTC');
+      }
+
+      // Create peer connection
+      const pc = new RTCPeerConnection({
+        iceServers: [
+          { urls: 'stun:stun.l.google.com:19302' }
+        ]
+      });
+
+      // Get user media
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: true,
+        video: false
+      });
+
+      // Add audio tracks to peer connection
+      stream.getAudioTracks().forEach(track => {
+        pc.addTrack(track, stream);
+      });
+
+      setLocalStream(stream);
+      setPeerConnection(pc);
+      setIsMediaReady(true);
+
+      console.log('WebRTC initialized successfully');
+      return pc;
+    } catch (error) {
+      console.error('Failed to initialize WebRTC:', error);
+      setError(`WebRTC initialization failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      setIsMediaReady(false);
+      return null;
+    }
+  }, []);
+
+  const claimCall = useCallback(async (shopperId: string) => {
+    if (socketRef.current?.readyState !== WebSocket.OPEN) {
+      return;
+    }
+
+    try {
+      // Initialize WebRTC if not already ready
+      let pc = peerConnection;
+      if (!pc || !isMediaReady) {
+        pc = await initializeWebRTC();
+        if (!pc) {
+          throw new Error('Failed to initialize WebRTC');
+        }
+      }
+
+      // Create an offer
+      const offer = await pc.createOffer({
+        offerToReceiveAudio: true,
+        offerToReceiveVideo: false
+      });
+
+      // Set local description
+      await pc.setLocalDescription(offer);
+
+      // Send claim call message with SDP offer
       socketRef.current.send(JSON.stringify({
         type: 'claim_call',
         salesRepId,
-        shopperId
+        shopperId,
+        sdpOffer: offer
       }));
+
+      console.log('Claim call sent with SDP offer');
+    } catch (error) {
+      console.error('Failed to claim call with WebRTC offer:', error);
+      setError(`Failed to start call: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
-  }, [salesRepId]);
+  }, [salesRepId, peerConnection, isMediaReady, initializeWebRTC]);
 
   const releaseCall = useCallback((shopperId: string) => {
     if (socketRef.current?.readyState === WebSocket.OPEN) {
@@ -162,6 +247,18 @@ export function useSalesRepWebSocket(salesRepId: string): UseSalesRepWebSocketRe
     };
   }, [salesRepId]); // Only depend on salesRepId
 
+  // Separate useEffect for WebRTC cleanup
+  useEffect(() => {
+    return () => {
+      if (localStream) {
+        localStream.getTracks().forEach(track => track.stop());
+      }
+      if (peerConnection) {
+        peerConnection.close();
+      }
+    };
+  }, [localStream, peerConnection]);
+
   return {
     queue,
     isConnected,
@@ -170,6 +267,11 @@ export function useSalesRepWebSocket(salesRepId: string): UseSalesRepWebSocketRe
     claimCall,
     releaseCall,
     currentCall,
-    isBusy
+    isBusy,
+    // WebRTC related properties
+    mediaCapabilities,
+    isMediaReady,
+    peerConnection,
+    localStream
   };
 }
