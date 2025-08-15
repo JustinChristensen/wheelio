@@ -43,7 +43,7 @@ export interface CallQueueSummary {
 }
 
 export interface ShopperMessage {
-  type: 'join_queue' | 'leave_queue' | 'webrtc_offer' | 'webrtc_answer';
+  type: 'join_queue' | 'leave_queue'
   shopperId: string;
   // Media capabilities detected on client before joining queue
   mediaCapabilities?: MediaCapabilities;
@@ -52,7 +52,7 @@ export interface ShopperMessage {
 }
 
 export interface SalesRepMessage {
-  type: 'connect' | 'claim_call' | 'release_call' | 'webrtc_offer' | 'webrtc_answer';
+  type: 'connect' | 'claim_call' | 'release_call'
   salesRepId: string;
   shopperId?: string; // For claim_call and release_call
   // WebRTC signaling data

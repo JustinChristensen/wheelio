@@ -5,9 +5,7 @@ import {
   markShopperDisconnected,
   removeShopperFromQueue,
   broadcastQueueUpdate,
-  getShopperQueuePosition,
-  getCallQueueSummary,
-  getSalesRepSocket
+  getShopperQueuePosition
 } from '../services/call-queue';
 import { ShopperMessage } from '../types/call-queue';
 
@@ -73,54 +71,6 @@ const shopperWebSocket: FastifyPluginAsync = async function (fastify) {
             break;
           }
 
-          case 'webrtc_offer': {
-            if (data.shopperId && data.sdp) {
-              // Forward offer to assigned sales rep
-              const queueEntry = getCallQueueSummary().find(entry => entry.shopperId === data.shopperId);
-              if (queueEntry?.assignedSalesRepId) {
-                const salesRepSocket = getSalesRepSocket(queueEntry.assignedSalesRepId);
-                if (salesRepSocket) {
-                  salesRepSocket.send(JSON.stringify({
-                    type: 'webrtc_offer_from_shopper',
-                    shopperId: data.shopperId,
-                    sdp: data.sdp
-                  }));
-                  fastify.log.info(`Forwarded WebRTC offer from shopper ${data.shopperId} to sales rep ${queueEntry.assignedSalesRepId}`);
-                } else {
-                  socket.send(JSON.stringify({
-                    type: 'error',
-                    message: 'Sales rep not available for WebRTC connection'
-                  }));
-                }
-              } else {
-                socket.send(JSON.stringify({
-                  type: 'error',
-                  message: 'No sales rep assigned to handle WebRTC offer'
-                }));
-              }
-            }
-            break;
-          }
-
-          case 'webrtc_answer': {
-            if (data.shopperId && data.sdp) {
-              // Forward answer to assigned sales rep
-              const queueEntry = getCallQueueSummary().find(entry => entry.shopperId === data.shopperId);
-              if (queueEntry?.assignedSalesRepId) {
-                const salesRepSocket = getSalesRepSocket(queueEntry.assignedSalesRepId);
-                if (salesRepSocket) {
-                  salesRepSocket.send(JSON.stringify({
-                    type: 'webrtc_answer_from_shopper',
-                    shopperId: data.shopperId,
-                    sdp: data.sdp
-                  }));
-                  fastify.log.info(`Forwarded WebRTC answer from shopper ${data.shopperId} to sales rep ${queueEntry.assignedSalesRepId}`);
-                }
-              }
-            }
-            break;
-          }
-            
           default:
             fastify.log.warn(`Unknown message type from shopper: ${data.type}`);
         }

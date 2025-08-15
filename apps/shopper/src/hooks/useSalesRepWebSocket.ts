@@ -20,11 +20,6 @@ interface UseSalesRepWebSocketReturn {
   releaseCall: (shopperId: string) => void;
   currentCall: CallQueueSummary | null;
   isBusy: boolean;
-  // WebRTC related properties
-  mediaCapabilities: MediaCapabilities | null;
-  isMediaReady: boolean;
-  peerConnection: RTCPeerConnection | null;
-  localStream: MediaStream | null;
 }
 
 export function useSalesRepWebSocket(salesRepId: string): UseSalesRepWebSocketReturn {
@@ -267,11 +262,6 @@ export function useSalesRepWebSocket(salesRepId: string): UseSalesRepWebSocketRe
     claimCall,
     releaseCall,
     currentCall,
-    isBusy,
-    // WebRTC related properties
-    mediaCapabilities,
-    isMediaReady,
-    peerConnection,
-    localStream
+    isBusy
   };
 }
