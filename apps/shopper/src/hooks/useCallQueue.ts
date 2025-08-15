@@ -25,11 +25,17 @@ interface CallQueueMessage {
 
 export const useCallQueue = () => {
   const [callState, setCallState] = useState<CallQueueState>({ status: 'disconnected' });
+  const callStateRef = useRef<CallQueueState>({ status: 'disconnected' });
   const wsRef = useRef<WebSocket | null>(null);
   const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [reconnectAttempts, setReconnectAttempts] = useState(0);
   const maxReconnectAttempts = 5;
+
+  // Keep ref in sync with state
+  useEffect(() => {
+    callStateRef.current = callState;
+  }, [callState]);
 
   const generateShopperId = useCallback(() => {
     return `shopper_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
@@ -75,7 +81,7 @@ export const useCallQueue = () => {
       }));
 
       // Get user media if we have microphone access
-      if (callState.hasMicrophone) {
+      if (callStateRef.current.hasMicrophone) {
         try {
           const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
           stream.getTracks().forEach(track => {
@@ -91,15 +97,15 @@ export const useCallQueue = () => {
       await pc.setLocalDescription(answer);
 
       // Send SDP answer back to sales rep via WebSocket
-      if (wsRef.current && callState.shopperId) {
+      if (wsRef.current && callStateRef.current.shopperId) {
         wsRef.current.send(JSON.stringify({
           type: 'sdp_answer',
-          shopperId: callState.shopperId,
+          shopperId: callStateRef.current.shopperId,
           sdpAnswer: pc.localDescription
         }));
-      }
 
-      console.log('SDP answer sent to sales rep');
+        console.log('SDP answer sent to sales rep');
+      }
     } catch (error) {
       console.error('Failed to handle SDP offer:', error);
       setCallState(prev => ({
@@ -108,7 +114,7 @@ export const useCallQueue = () => {
         error: 'Failed to establish audio connection'
       }));
     }
-  }, [callState.hasMicrophone, callState.shopperId, createPeerConnection]);
+  }, [createPeerConnection]);
 
   const cleanup = useCallback(() => {
     if (wsRef.current) {
@@ -196,7 +202,7 @@ export const useCallQueue = () => {
                 assignedSalesRepId: data.salesRepId,
                 lastMessage: data.message
               }));
-              
+
               // Handle SDP offer if provided
               if (data.sdpOffer?.sdp) {
                 handleSdpOffer(data.sdpOffer.sdp);
@@ -242,7 +248,7 @@ export const useCallQueue = () => {
         wsRef.current = null;
         
         // Only attempt reconnect if we were previously connected and it wasn't a manual disconnect
-        if (callState.status !== 'disconnected' && reconnectAttempts < maxReconnectAttempts) {
+        if (callStateRef.current.status !== 'disconnected' && reconnectAttempts < maxReconnectAttempts) {
           setCallState(prev => ({ ...prev, status: 'connecting' }));
           const delay = Math.min(1000 * Math.pow(2, reconnectAttempts), 10000); // Exponential backoff
           
@@ -275,10 +281,10 @@ export const useCallQueue = () => {
         error: 'Failed to connect to call service'
       }));
     }
-  }, [callState.status, reconnectAttempts, generateShopperId, handleSdpOffer]);
+  }, [reconnectAttempts, generateShopperId, handleSdpOffer]);
 
   const disconnect = useCallback(() => {
-    const currentShopperId = callState.shopperId;
+    const currentShopperId = callStateRef.current.shopperId;
     
     if (wsRef.current && currentShopperId) {
       // Send leave_queue message before closing
@@ -291,7 +297,7 @@ export const useCallQueue = () => {
     cleanup();
     setCallState({ status: 'disconnected' });
     setReconnectAttempts(0);
-  }, [callState.shopperId, cleanup]);
+  }, [cleanup]);
 
   // Cleanup on unmount
   useEffect(() => {

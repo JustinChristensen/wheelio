@@ -5,7 +5,9 @@ import {
   markShopperDisconnected,
   removeShopperFromQueue,
   broadcastQueueUpdate,
-  getShopperQueuePosition
+  getShopperQueuePosition,
+  getCallQueueEntry,
+  getSalesRepSocket
 } from '../services/call-queue';
 import { ShopperMessage } from '../types/call-queue';
 
@@ -67,6 +69,57 @@ const shopperWebSocket: FastifyPluginAsync = async function (fastify) {
               broadcastQueueUpdate();
               
               fastify.log.info(`Shopper ${data.shopperId} left the call queue`);
+            }
+            break;
+          }
+
+          case 'sdp_answer': {
+            console.log('DATA', data);
+            if (data.shopperId && data.sdpAnswer) {
+              // Find the shopper's entry to get the assigned sales rep
+              const shopperEntry = getCallQueueEntry(data.shopperId);
+              
+              if (shopperEntry?.assignedSalesRepId) {
+                // Forward the SDP answer to the assigned sales rep
+                const salesRepSocket = getSalesRepSocket(shopperEntry.assignedSalesRepId);
+                
+                if (salesRepSocket && salesRepSocket.readyState === 1) { // WebSocket.OPEN
+                  try {
+                    salesRepSocket.send(JSON.stringify({
+                      type: 'sdp_answer',
+                      salesRepId: shopperEntry.assignedSalesRepId,
+                      shopperId: data.shopperId,
+                      sdpAnswer: data.sdpAnswer
+                    }));
+                    
+                    fastify.log.info(`Forwarded SDP answer from shopper ${data.shopperId} to sales rep ${shopperEntry.assignedSalesRepId}`);
+                  } catch (error) {
+                    fastify.log.error(error, `Failed to forward SDP answer to sales rep ${shopperEntry.assignedSalesRepId}:`);
+                    
+                    // Send error back to shopper
+                    socket.send(JSON.stringify({
+                      type: 'error',
+                      message: 'Failed to establish connection with sales representative'
+                    }));
+                  }
+                } else {
+                  fastify.log.warn(`Sales rep ${shopperEntry.assignedSalesRepId} not connected or socket not ready`);
+                  
+                  // Send error back to shopper
+                  socket.send(JSON.stringify({
+                    type: 'error',
+                    message: 'Sales representative is not available'
+                  }));
+                }
+              } else {
+                fastify.log.warn(`No assigned sales rep found for shopper ${data.shopperId}`);
+                
+                // Send error back to shopper
+                socket.send(JSON.stringify({
+                  type: 'error',
+                  message: 'No sales representative assigned to your call'
+                }));
+              }
             }
             break;
           }
