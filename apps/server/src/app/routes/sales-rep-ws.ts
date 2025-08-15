@@ -45,7 +45,7 @@ const salesRepWebSocket: FastifyPluginAsync = async function (fastify) {
             
           case 'claim_call': {
             if (data.shopperId && currentSalesRepId) {
-              const assignment = assignCallToSalesRep(data.shopperId, currentSalesRepId);
+              const assignment = assignCallToSalesRep(data.shopperId, currentSalesRepId, data.sdpOffer);
               
               if (assignment) {
                 // Send confirmation to sales rep

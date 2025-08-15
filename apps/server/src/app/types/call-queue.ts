@@ -48,7 +48,7 @@ export interface ShopperMessage {
   // Media capabilities detected on client before joining queue
   mediaCapabilities?: MediaCapabilities;
   // WebRTC signaling data
-  sdp?: string;
+  sdpOffer?: RTCSessionDescriptionInit
 }
 
 export interface SalesRepMessage {
@@ -56,6 +56,6 @@ export interface SalesRepMessage {
   salesRepId: string;
   shopperId?: string; // For claim_call and release_call
   // WebRTC signaling data
-  sdp?: string;
+  sdpOffer?: RTCSessionDescriptionInit;
 }
 

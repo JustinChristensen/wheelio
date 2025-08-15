@@ -4,7 +4,7 @@ import {
   SalesRepConnection, 
   CallQueueSummary, 
   CallQueueUpdate,
-  MediaCapabilities
+  MediaCapabilities,
 } from '../types/call-queue';
 
 // In-memory storage for the call queue and sales rep connections
@@ -131,7 +131,11 @@ export function getSalesRepCurrentCall(salesRepId: string): CallQueueEntry | nul
 /**
  * Assign a call to a sales rep
  */
-export function assignCallToSalesRep(shopperId: string, salesRepId: string): CallQueueEntry | null {
+export function assignCallToSalesRep(
+  shopperId: string, 
+  salesRepId: string, 
+  sdpOffer?: RTCSessionDescriptionInit
+): CallQueueEntry | null {
   const entry = callQueue.get(shopperId);
   if (!entry) return null;
   
@@ -154,11 +158,14 @@ export function assignCallToSalesRep(shopperId: string, salesRepId: string): Cal
   // Notify the shopper that their call has been answered
   if (entry.shopperSocket && entry.shopperSocket.readyState === 1) { // WebSocket.OPEN
     try {
-      entry.shopperSocket.send(JSON.stringify({
-        type: 'call_answered',
-        salesRepId: salesRepId,
-        message: 'A sales representative has answered your call'
-      }));
+      entry.shopperSocket.send(
+        JSON.stringify({
+          type: 'call_answered',
+          salesRepId: salesRepId,
+          message: 'A sales representative has answered your call',
+          sdpOffer: sdpOffer,
+        })
+      );
     } catch (error) {
       console.error(`Failed to notify shopper ${shopperId} of call assignment:`, error);
     }
