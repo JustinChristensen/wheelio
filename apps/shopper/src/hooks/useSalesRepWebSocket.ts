@@ -196,6 +196,20 @@ export function useSalesRepWebSocket(salesRepId: string): UseSalesRepWebSocketRe
               }
               break;
             }
+            case 'sdp_answer': {
+              console.log('Received SDP answer from shopper:', data, peerConnection);
+              // Configure the peer connection with the shopper's SDP answer
+              if (peerConnection && data.sdpAnswer) {
+                peerConnection.setRemoteDescription(new RTCSessionDescription(data.sdpAnswer))
+                  .then(() => {
+                    console.log('Successfully set remote description with SDP answer');
+                  }, (error) => {
+                    console.error('Failed to set remote description:', error);
+                    setError(`Failed to establish WebRTC connection: ${error instanceof Error ? error.message : 'Unknown error'}`);
+                  });
+              }
+              break;
+            }
             case 'status_update': {
               // Handle status updates from the server
               if (data.salesRepId === salesRepId) {
@@ -240,7 +254,7 @@ export function useSalesRepWebSocket(salesRepId: string): UseSalesRepWebSocketRe
         clearTimeout(reconnectTimeoutRef.current);
       }
     };
-  }, [salesRepId]); // Only depend on salesRepId
+  }, [salesRepId, peerConnection]); // Include peerConnection dependency for sdp_answer handling
 
   // Separate useEffect for WebRTC cleanup
   useEffect(() => {
