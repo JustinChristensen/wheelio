@@ -15,7 +15,10 @@ export function SalesRepPage() {
     claimCall,
     releaseCall,
     currentCall,
-    isBusy
+    isBusy,
+    requestCollaboration,
+    collaborationStatus,
+    collaborationError
   } = useSalesRepWebSocket(SALES_REP_ID);
 
   const handleAnswerCall = (shopperId: string) => {
@@ -59,13 +62,45 @@ export function SalesRepPage() {
                   <p className="text-sm text-blue-700">
                     Shopper {currentCall.shopperId.slice(-8)} • Connected at {new Date(currentCall.connectedAt).toLocaleTimeString()}
                   </p>
+                  {collaborationStatus !== 'none' && (
+                    <div className="mt-2">
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                        collaborationStatus === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                        collaborationStatus === 'accepted' ? 'bg-green-100 text-green-800' :
+                        collaborationStatus === 'rejected' ? 'bg-red-100 text-red-800' :
+                        'bg-gray-100 text-gray-800'
+                      }`}>
+                        Collaboration: {collaborationStatus}
+                      </span>
+                    </div>
+                  )}
+                  {collaborationError && (
+                    <div className="mt-2 text-sm text-red-600">
+                      {collaborationError}
+                    </div>
+                  )}
                 </div>
-                <button
-                  onClick={() => releaseCall(currentCall.shopperId)}
-                  className="px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-md hover:bg-red-700 transition-colors"
-                >
-                  Release Call
-                </button>
+                <div className="flex space-x-3">
+                  <button
+                    onClick={() => requestCollaboration(currentCall.shopperId)}
+                    disabled={collaborationStatus === 'pending' || collaborationStatus === 'accepted'}
+                    className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+                      collaborationStatus === 'pending' || collaborationStatus === 'accepted'
+                        ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                        : 'bg-blue-600 text-white hover:bg-blue-700'
+                    }`}
+                  >
+                    {collaborationStatus === 'pending' ? 'Requesting...' : 
+                     collaborationStatus === 'accepted' ? 'Collaborating' : 
+                     'Request Collaboration'}
+                  </button>
+                  <button
+                    onClick={() => releaseCall(currentCall.shopperId)}
+                    className="px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-md hover:bg-red-700 transition-colors"
+                  >
+                    Release Call
+                  </button>
+                </div>
               </div>
             </div>
           )}

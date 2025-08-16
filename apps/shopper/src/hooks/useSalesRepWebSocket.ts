@@ -20,6 +20,10 @@ interface UseSalesRepWebSocketReturn {
   releaseCall: (shopperId: string) => void;
   currentCall: CallQueueSummary | null;
   isBusy: boolean;
+  // Collaboration features
+  requestCollaboration: (shopperId: string) => void;
+  collaborationStatus: 'none' | 'pending' | 'accepted' | 'rejected' | 'ended';
+  collaborationError: string | null;
 }
 
 export function useSalesRepWebSocket(salesRepId: string): UseSalesRepWebSocketReturn {
@@ -29,6 +33,10 @@ export function useSalesRepWebSocket(salesRepId: string): UseSalesRepWebSocketRe
   const [error, setError] = useState<string | null>(null);
   const [currentCall, setCurrentCall] = useState<CallQueueSummary | null>(null);
   const [isBusy, setIsBusy] = useState(false);
+  
+  // Collaboration state
+  const [collaborationStatus, setCollaborationStatus] = useState<'none' | 'pending' | 'accepted' | 'rejected' | 'ended'>('none');
+  const [collaborationError, setCollaborationError] = useState<string | null>(null);
   
   // WebRTC related state
   const [isMediaReady, setIsMediaReady] = useState(false);
@@ -198,6 +206,25 @@ export function useSalesRepWebSocket(salesRepId: string): UseSalesRepWebSocketRe
     setIsMediaReady(false);
   }, [salesRepId]);
 
+  const requestCollaboration = useCallback((shopperId: string) => {
+    if (socketRef.current?.readyState === WebSocket.OPEN) {
+      // Clear any previous collaboration error
+      setCollaborationError(null);
+      
+      // Send collaboration request
+      socketRef.current.send(JSON.stringify({
+        type: 'request_collaboration',
+        salesRepId,
+        shopperId
+      }));
+      
+      // Set status to pending
+      setCollaborationStatus('pending');
+    } else {
+      setCollaborationError('Not connected to server');
+    }
+  }, [salesRepId]);
+
   useEffect(() => {
     // Connection logic moved directly into useEffect to avoid dependency issues
     const connectWebSocket = () => {
@@ -260,6 +287,9 @@ export function useSalesRepWebSocket(salesRepId: string): UseSalesRepWebSocketRe
               if (data.salesRepId === salesRepId) {
                 setCurrentCall(null);
                 setIsBusy(false);
+                // Reset collaboration status when call is released
+                setCollaborationStatus('none');
+                setCollaborationError(null);
               }
               break;
             }
@@ -289,6 +319,9 @@ export function useSalesRepWebSocket(salesRepId: string): UseSalesRepWebSocketRe
                 setCurrentCall(null);
                 setIsBusy(false);
                 setError(null);
+                // Reset collaboration status when call ends
+                setCollaborationStatus('none');
+                setCollaborationError(null);
               }
               break;
             }
@@ -330,6 +363,15 @@ export function useSalesRepWebSocket(salesRepId: string): UseSalesRepWebSocketRe
             }
             case 'error': {
               setError(data.message);
+              break;
+            }
+            case 'collaboration_status': {
+              // Handle collaboration status updates
+              if (data.salesRepId === salesRepId) {
+                setCollaborationStatus(data.status);
+                setCollaborationError(null);
+                console.log('Collaboration status updated:', data.status);
+              }
               break;
             }
           }
@@ -392,6 +434,10 @@ export function useSalesRepWebSocket(salesRepId: string): UseSalesRepWebSocketRe
     claimCall,
     releaseCall,
     currentCall,
-    isBusy
+    isBusy,
+    // Collaboration features
+    requestCollaboration,
+    collaborationStatus,
+    collaborationError
   };
 }
