@@ -107,20 +107,56 @@ export function getCollaborationStatus(shopperId: string, salesRepId: string): C
 
 /**
  * Clean up expired collaboration requests (older than 5 minutes)
+ * Returns collaboration sessions that expired for notification purposes
  */
-export function cleanupExpiredCollaborationRequests(): number {
+export function cleanupExpiredCollaborationRequests(): CollaborationSession[] {
   const now = Date.now();
   const expireAfterMs = 5 * 60 * 1000; // 5 minutes
-  let cleanedCount = 0;
+  const expiredSessions: CollaborationSession[] = [];
 
   for (const [key, session] of collaborationSessions.entries()) {
     if (session.status === 'pending' && (now - session.requestedAt) > expireAfterMs) {
+      expiredSessions.push(session);
       collaborationSessions.delete(key);
-      cleanedCount++;
     }
   }
 
-  return cleanedCount;
+  return expiredSessions;
+}
+
+/**
+ * Notify both parties about collaboration timeout
+ */
+export function notifyCollaborationTimeout(session: CollaborationSession): void {
+  // Notify sales rep
+  const salesRepSocket = getSalesRepSocket(session.salesRepId);
+  if (salesRepSocket && salesRepSocket.readyState === 1) {
+    try {
+      salesRepSocket.send(JSON.stringify({
+        type: 'collaboration_status',
+        shopperId: session.shopperId,
+        salesRepId: session.salesRepId,
+        status: 'ended'
+      }));
+    } catch (error) {
+      console.error(`Failed to notify sales rep ${session.salesRepId} of collaboration timeout:`, error);
+    }
+  }
+
+  // Notify shopper
+  const shopperSocket = getShopperSocket(session.shopperId);
+  if (shopperSocket && shopperSocket.readyState === 1) {
+    try {
+      shopperSocket.send(JSON.stringify({
+        type: 'collaboration_status',
+        shopperId: session.shopperId,
+        salesRepId: session.salesRepId,
+        status: 'ended'
+      }));
+    } catch (error) {
+      console.error(`Failed to notify shopper ${session.shopperId} of collaboration timeout:`, error);
+    }
+  }
 }
 
 /**
@@ -196,6 +232,13 @@ export function markShopperDisconnected(shopperId: string): CallQueueEntry | nul
  * Remove a shopper from the queue entirely
  */
 export function removeShopperFromQueue(shopperId: string): boolean {
+  const entry = callQueue.get(shopperId);
+  
+  // End any active collaboration sessions before removing
+  if (entry?.assignedSalesRepId) {
+    endCollaboration(shopperId, entry.assignedSalesRepId);
+  }
+  
   return callQueue.delete(shopperId);
 }
 
@@ -216,6 +259,20 @@ export function addSalesRepConnection(salesRepId: string, socket: WebSocket): Sa
  * Remove a sales rep connection
  */
 export function removeSalesRepConnection(salesRepId: string): boolean {
+  // End any active collaboration sessions for this sales rep
+  const collaborationsToEnd: string[] = [];
+  
+  for (const [key, session] of collaborationSessions.entries()) {
+    if (session.salesRepId === salesRepId && session.status === 'pending') {
+      collaborationsToEnd.push(key);
+    }
+  }
+  
+  // Clean up collaboration sessions
+  collaborationsToEnd.forEach(key => {
+    collaborationSessions.delete(key);
+  });
+  
   return salesRepConnections.delete(salesRepId);
 }
 
@@ -297,6 +354,11 @@ export function releaseCallFromSalesRep(shopperId: string): CallQueueEntry | nul
   if (!entry) return null;
   
   const previousSalesRepId = entry.assignedSalesRepId;
+  
+  // End any active collaboration session
+  if (previousSalesRepId) {
+    endCollaboration(shopperId, previousSalesRepId);
+  }
   
   const updatedEntry: CallQueueEntry = {
     ...entry,
@@ -437,7 +499,7 @@ export function cleanupOldDisconnectedCalls(maxAgeMinutes = 30): number {
 function startPeriodicCleanup(): () => void {
   const cleanupInterval = setInterval(() => {
     const cleanedCallsCount = cleanupOldDisconnectedCalls(1); // 1 minute = 60 seconds
-    const cleanedCollaborationCount = cleanupExpiredCollaborationRequests();
+    const expiredCollaborationSessions = cleanupExpiredCollaborationRequests();
     
     if (cleanedCallsCount > 0) {
       console.log(`Periodic cleanup: Removed ${cleanedCallsCount} old disconnected calls`);
@@ -445,8 +507,12 @@ function startPeriodicCleanup(): () => void {
       broadcastQueueUpdate();
     }
     
-    if (cleanedCollaborationCount > 0) {
-      console.log(`Periodic cleanup: Removed ${cleanedCollaborationCount} expired collaboration requests`);
+    if (expiredCollaborationSessions.length > 0) {
+      console.log(`Periodic cleanup: ${expiredCollaborationSessions.length} collaboration requests timed out`);
+      // Notify both parties about timeouts
+      expiredCollaborationSessions.forEach(session => {
+        notifyCollaborationTimeout(session);
+      });
     }
   }, 30000); // Run every 30 seconds
   

@@ -136,6 +136,33 @@ const salesRepWebSocket: FastifyPluginAsync = async function (fastify) {
 
           case 'request_collaboration': {
             if (data.shopperId && currentSalesRepId) {
+              // Verify the sales rep is currently handling this shopper's call
+              const callEntry = getCallQueueEntry(data.shopperId);
+              
+              if (!callEntry) {
+                socket.send(JSON.stringify({
+                  type: 'error',
+                  message: 'Shopper not found in queue'
+                }));
+                break;
+              }
+              
+              if (callEntry.assignedSalesRepId !== currentSalesRepId) {
+                socket.send(JSON.stringify({
+                  type: 'error',
+                  message: 'You are not assigned to this shopper\'s call'
+                }));
+                break;
+              }
+              
+              if (!callEntry.isConnected) {
+                socket.send(JSON.stringify({
+                  type: 'error',
+                  message: 'Shopper is not currently connected'
+                }));
+                break;
+              }
+              
               // Request collaboration session
               const collaborationSession = requestCollaboration(data.shopperId, currentSalesRepId);
               
@@ -166,21 +193,26 @@ const salesRepWebSocket: FastifyPluginAsync = async function (fastify) {
                     fastify.log.error(error, `Failed to send collaboration request to shopper ${data.shopperId}:`);
                     socket.send(JSON.stringify({
                       type: 'error',
-                      message: 'Failed to send collaboration request'
+                      message: 'Failed to send collaboration request to shopper'
                     }));
                   }
                 } else {
                   socket.send(JSON.stringify({
                     type: 'error',
-                    message: 'Shopper is not connected'
+                    message: 'Shopper is not connected or unavailable'
                   }));
                 }
               } else {
                 socket.send(JSON.stringify({
                   type: 'error',
-                  message: 'Cannot request collaboration - call not found or request already pending'
+                  message: 'Cannot request collaboration - request already pending or call conditions not met'
                 }));
               }
+            } else {
+              socket.send(JSON.stringify({
+                type: 'error',
+                message: 'Missing shopper ID or sales rep not connected'
+              }));
             }
             break;
           }

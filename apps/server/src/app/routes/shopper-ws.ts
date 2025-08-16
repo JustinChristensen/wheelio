@@ -222,6 +222,25 @@ const shopperWebSocket: FastifyPluginAsync = async function (fastify) {
 
           case 'collaboration_response': {
             if (data.salesRepId && data.accepted !== undefined && currentShopperId) {
+              // Verify the shopper is currently in a call with this sales rep
+              const callEntry = getCallQueueEntry(currentShopperId);
+              
+              if (!callEntry) {
+                socket.send(JSON.stringify({
+                  type: 'error',
+                  message: 'You are not currently in the call queue'
+                }));
+                break;
+              }
+              
+              if (callEntry.assignedSalesRepId !== data.salesRepId) {
+                socket.send(JSON.stringify({
+                  type: 'error',
+                  message: 'You are not currently connected to this sales representative'
+                }));
+                break;
+              }
+              
               // Respond to the collaboration request
               const collaborationSession = respondToCollaboration(
                 currentShopperId, 
@@ -258,21 +277,26 @@ const shopperWebSocket: FastifyPluginAsync = async function (fastify) {
                     fastify.log.error(error, `Failed to send collaboration response to sales rep ${data.salesRepId}:`);
                     socket.send(JSON.stringify({
                       type: 'error',
-                      message: 'Failed to send collaboration response'
+                      message: 'Failed to send collaboration response to sales representative'
                     }));
                   }
                 } else {
                   socket.send(JSON.stringify({
                     type: 'error',
-                    message: 'Sales representative is not connected'
+                    message: 'Sales representative is not connected or unavailable'
                   }));
                 }
               } else {
                 socket.send(JSON.stringify({
                   type: 'error',
-                  message: 'Collaboration request not found or already responded to'
+                  message: 'Collaboration request not found, already responded to, or expired'
                 }));
               }
+            } else {
+              socket.send(JSON.stringify({
+                type: 'error',
+                message: 'Missing required information for collaboration response'
+              }));
             }
             break;
           }
