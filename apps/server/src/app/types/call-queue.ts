@@ -43,7 +43,7 @@ export interface CallQueueSummary {
 }
 
 export interface ShopperMessage {
-  type: 'join_queue' | 'leave_queue' | 'sdp_answer' | 'ice_candidate'
+  type: 'join_queue' | 'leave_queue' | 'sdp_answer' | 'ice_candidate' | 'end_call'
   shopperId: string;
   // Media capabilities detected on client before joining queue
   mediaCapabilities?: MediaCapabilities;

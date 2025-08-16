@@ -7,7 +7,8 @@ import {
   broadcastQueueUpdate,
   getShopperQueuePosition,
   getCallQueueEntry,
-  getSalesRepSocket
+  getSalesRepSocket,
+  releaseCallFromSalesRep
 } from '../services/call-queue';
 import { ShopperMessage } from '../types/call-queue';
 
@@ -169,6 +170,50 @@ const shopperWebSocket: FastifyPluginAsync = async function (fastify) {
                   type: 'error',
                   message: 'No sales representative assigned for connection setup'
                 }));
+              }
+            }
+            break;
+          }
+
+          case 'end_call': {
+            if (data.shopperId) {
+              // Find the shopper's entry to get the assigned sales rep
+              const shopperEntry = getCallQueueEntry(data.shopperId);
+              
+              if (shopperEntry?.assignedSalesRepId) {
+                // Release the call from the sales rep
+                const release = releaseCallFromSalesRep(data.shopperId);
+                
+                if (release) {
+                  // Notify the sales rep that the call was ended by the shopper
+                  const salesRepSocket = getSalesRepSocket(shopperEntry.assignedSalesRepId);
+                  if (salesRepSocket && salesRepSocket.readyState === 1) { // WebSocket.OPEN
+                    try {
+                      salesRepSocket.send(JSON.stringify({
+                        type: 'call_ended_by_shopper',
+                        salesRepId: shopperEntry.assignedSalesRepId,
+                        shopperId: data.shopperId
+                      }));
+                    } catch (error) {
+                      fastify.log.error(error, `Failed to notify sales rep ${shopperEntry.assignedSalesRepId} of call end:`);
+                    }
+                  }
+                  
+                  // Send confirmation to shopper
+                  socket.send(JSON.stringify({
+                    type: 'call_ended',
+                    shopperId: data.shopperId
+                  }));
+                  
+                  // Broadcast updated queue to all sales reps
+                  broadcastQueueUpdate();
+                  
+                  fastify.log.info(`Call ended by shopper ${data.shopperId}`);
+                } else {
+                  fastify.log.warn(`Failed to release call for shopper ${data.shopperId}`);
+                }
+              } else {
+                fastify.log.warn(`No assigned sales rep found for shopper ${data.shopperId} trying to end call`);
               }
             }
             break;

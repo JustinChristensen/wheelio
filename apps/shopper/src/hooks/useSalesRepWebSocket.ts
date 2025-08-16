@@ -263,6 +263,35 @@ export function useSalesRepWebSocket(salesRepId: string): UseSalesRepWebSocketRe
               }
               break;
             }
+            case 'call_ended_by_shopper': {
+              console.log('Call ended by shopper:', data);
+              // If this sales rep's call was ended by the shopper, clean up
+              if (data.salesRepId === salesRepId) {
+                // Clean up audio elements
+                const audioElement = document.getElementById('remote-shopper-audio');
+                if (audioElement) {
+                  audioElement.remove();
+                }
+                
+                // Close peer connection
+                if (peerConnectionRef.current) {
+                  peerConnectionRef.current.close();
+                  peerConnectionRef.current = null;
+                }
+                
+                // Stop local streams
+                if (localStreamRef.current) {
+                  localStreamRef.current.getTracks().forEach((track: MediaStreamTrack) => track.stop());
+                  localStreamRef.current = null;
+                }
+                
+                setIsMediaReady(false);
+                setCurrentCall(null);
+                setIsBusy(false);
+                setError(null);
+              }
+              break;
+            }
             case 'sdp_answer': {
               console.log('Received SDP answer from shopper:', data, peerConnectionRef.current);
               // Configure the peer connection with the shopper's SDP answer

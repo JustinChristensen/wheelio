@@ -12,7 +12,7 @@ export interface CallQueueState {
 }
 
 interface CallQueueMessage {
-  type: 'connected' | 'queue_joined' | 'queue_left' | 'call_claimed' | 'call_answered' | 'call_released' | 'error' | 'sdp_answer' | 'ice_candidate';
+  type: 'connected' | 'queue_joined' | 'queue_left' | 'call_claimed' | 'call_answered' | 'call_released' | 'error' | 'sdp_answer' | 'ice_candidate' | 'end_call' | 'call_ended';
   shopperId?: string;
   position?: number;
   salesRepId?: string;
@@ -306,6 +306,12 @@ export const useCallQueue = () => {
               break;
             }
               
+            case 'call_ended': {
+              console.log('Call ended confirmation received from server');
+              // Server confirmation that call was ended - state should already be updated by endCall
+              break;
+            }
+              
             case 'error':
               setCallState(prev => ({
                 ...prev,
@@ -377,6 +383,46 @@ export const useCallQueue = () => {
     setReconnectAttempts(0);
   }, [cleanup]);
 
+  const endCall = useCallback(() => {
+    const currentShopperId = callStateRef.current.shopperId;
+    
+    // Clean up WebRTC connection
+    if (peerConnectionRef.current) {
+      peerConnectionRef.current.close();
+      peerConnectionRef.current = null;
+    }
+    
+    // Clean up and remove remote audio element
+    const audioElement = document.getElementById('remote-salesrep-audio') as HTMLAudioElement;
+    if (audioElement) {
+      // Stop the audio stream
+      if (audioElement.srcObject) {
+        const stream = audioElement.srcObject as MediaStream;
+        stream.getTracks().forEach(track => track.stop());
+        audioElement.srcObject = null;
+      }
+      audioElement.remove();
+    }
+    
+    // Notify server that call is ending (this will release the call on server side)
+    if (wsRef.current?.readyState === WebSocket.OPEN && currentShopperId) {
+      wsRef.current.send(JSON.stringify({
+        type: 'end_call',
+        shopperId: currentShopperId
+      }));
+    }
+    
+    // Update state back to in-queue
+    setCallState(prev => ({
+      ...prev,
+      status: 'in-queue',
+      assignedSalesRepId: undefined,
+      lastMessage: 'Call ended'
+    }));
+    
+    console.log('Call ended by shopper');
+  }, []);
+
   // Cleanup on unmount
   useEffect(() => {
     return cleanup;
@@ -386,6 +432,7 @@ export const useCallQueue = () => {
     callState,
     connect,
     disconnect,
+    endCall,
     isConnected: callState.status !== 'disconnected' && callState.status !== 'error',
     peerConnection: peerConnectionRef.current
   };
