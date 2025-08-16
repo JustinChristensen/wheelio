@@ -26,8 +26,6 @@ if (cursorArea) {
 
 // 2. **Render remote cursors**
 awareness.on('change', () => {
-    console.log('Awareness state changed:', awareness.getStates());
-
     // Get all connected clients' awareness state, including our own
     const states = awareness.getStates();
 
