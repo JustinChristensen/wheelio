@@ -9,10 +9,16 @@ export interface CallQueueState {
   error?: string;
   lastMessage?: string; // Add this to store the latest status message
   hasMicrophone?: boolean; // Add microphone detection result
+  // Collaboration state
+  collaborationRequest?: {
+    salesRepId: string;
+    salesRepName: string;
+  };
+  collaborationStatus: 'none' | 'pending' | 'accepted' | 'rejected';
 }
 
 interface CallQueueMessage {
-  type: 'connected' | 'queue_joined' | 'queue_left' | 'call_claimed' | 'call_answered' | 'call_released' | 'error' | 'sdp_answer' | 'ice_candidate' | 'end_call' | 'call_ended';
+  type: 'connected' | 'queue_joined' | 'queue_left' | 'call_claimed' | 'call_answered' | 'call_released' | 'error' | 'sdp_answer' | 'ice_candidate' | 'end_call' | 'call_ended' | 'collaboration_request' | 'collaboration_status';
   shopperId?: string;
   position?: number;
   salesRepId?: string;
@@ -22,11 +28,20 @@ interface CallQueueMessage {
   sdpOffer?: RTCSessionDescriptionInit; // SDP offer from sales rep when answering a call
   sdpAnswer?: RTCSessionDescriptionInit; // SDP answer from shopper back to sales rep
   iceCandidate?: RTCIceCandidateInit; // ICE candidate from sales rep
+  // Collaboration fields
+  salesRepName?: string; // For collaboration_request
+  status?: 'pending' | 'accepted' | 'rejected' | 'ended'; // For collaboration_status
 }
 
 export const useCallQueue = () => {
-  const [callState, setCallState] = useState<CallQueueState>({ status: 'disconnected' });
-  const callStateRef = useRef<CallQueueState>({ status: 'disconnected' });
+  const [callState, setCallState] = useState<CallQueueState>({ 
+    status: 'disconnected',
+    collaborationStatus: 'none'
+  });
+  const callStateRef = useRef<CallQueueState>({ 
+    status: 'disconnected',
+    collaborationStatus: 'none'
+  });
   const wsRef = useRef<WebSocket | null>(null);
   const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -261,7 +276,10 @@ export const useCallQueue = () => {
                 status: 'in-queue',
                 position: data.position,
                 assignedSalesRepId: undefined,
-                lastMessage: data.message
+                lastMessage: data.message,
+                // Reset collaboration state when call is released
+                collaborationStatus: 'none',
+                collaborationRequest: undefined
               }));
               
               // Clean up WebRTC connection when call is released
@@ -319,6 +337,36 @@ export const useCallQueue = () => {
                 error: data.message || 'Unknown error occurred'
               }));
               break;
+
+            case 'collaboration_request': {
+              console.log('Received collaboration request:', data);
+              if (data.salesRepId && data.salesRepName) {
+                setCallState(prev => ({
+                  ...prev,
+                  collaborationRequest: {
+                    salesRepId: data.salesRepId,
+                    salesRepName: data.salesRepName
+                  },
+                  collaborationStatus: 'pending'
+                }));
+              }
+              break;
+            }
+
+            case 'collaboration_status': {
+              console.log('Received collaboration status update:', data);
+              if (data.status) {
+                setCallState(prev => ({
+                  ...prev,
+                  collaborationStatus: data.status as 'pending' | 'accepted' | 'rejected' | 'ended',
+                  // Clear request if collaboration ended or was rejected
+                  collaborationRequest: (data.status === 'ended' || data.status === 'rejected') 
+                    ? undefined 
+                    : prev.collaborationRequest
+                }));
+              }
+              break;
+            }
               
             default:
               console.warn('Unknown call queue message type:', data.type);
@@ -417,11 +465,46 @@ export const useCallQueue = () => {
       ...prev,
       status: 'in-queue',
       assignedSalesRepId: undefined,
-      lastMessage: 'Call ended'
+      lastMessage: 'Call ended',
+      // Reset collaboration state when call ends
+      collaborationStatus: 'none',
+      collaborationRequest: undefined
     }));
     
     console.log('Call ended by shopper');
   }, []);
+
+  // Collaboration functions
+  const respondToCollaboration = useCallback((accepted: boolean) => {
+    const currentShopperId = callStateRef.current.shopperId;
+    const salesRepId = callStateRef.current.collaborationRequest?.salesRepId;
+    
+    if (wsRef.current?.readyState === WebSocket.OPEN && currentShopperId && salesRepId) {
+      wsRef.current.send(JSON.stringify({
+        type: 'collaboration_response',
+        shopperId: currentShopperId,
+        salesRepId,
+        accepted
+      }));
+      
+      // Update local state immediately
+      setCallState(prev => ({
+        ...prev,
+        collaborationStatus: accepted ? 'accepted' : 'rejected',
+        collaborationRequest: accepted ? prev.collaborationRequest : undefined
+      }));
+      
+      console.log(`Collaboration ${accepted ? 'accepted' : 'rejected'}`);
+    }
+  }, []);
+
+  const acceptCollaboration = useCallback(() => {
+    respondToCollaboration(true);
+  }, [respondToCollaboration]);
+
+  const declineCollaboration = useCallback(() => {
+    respondToCollaboration(false);
+  }, [respondToCollaboration]);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -433,6 +516,8 @@ export const useCallQueue = () => {
     connect,
     disconnect,
     endCall,
+    acceptCollaboration,
+    declineCollaboration,
     isConnected: callState.status !== 'disconnected' && callState.status !== 'error',
     peerConnection: peerConnectionRef.current
   };

@@ -2,8 +2,10 @@ import { useState } from 'react';
 import FilterSidebar from '../FilterSidebar/FilterSidebar';
 import CarGrid from '../CarGrid/CarGrid';
 import AISalesAgent from '../AISalesAgent/AISalesAgent';
+import CollaborationRequestModal from '../CollaborationRequestModal/CollaborationRequestModal';
 import { CarFilters } from 'car-data';
 import { useCarData } from '../../hooks/useCarData';
+import { useCallQueue } from '../../hooks/useCallQueue';
 
 export function ShopperPage() {
   const [filters, setFilters] = useState<CarFilters>({});
@@ -11,6 +13,9 @@ export function ShopperPage() {
   
   // Fetch car data from API
   const { cars, loading, error } = useCarData();
+  
+  // Call queue for collaboration features
+  const { callState, acceptCollaboration, declineCollaboration } = useCallQueue();
 
   return (
     <main className="flex-1 flex overflow-hidden h-full">
@@ -45,6 +50,15 @@ export function ShopperPage() {
           cars={cars}
         />
       </div>
+
+      {/* Collaboration Request Modal */}
+      <CollaborationRequestModal
+        isOpen={!!callState.collaborationRequest && callState.collaborationStatus === 'pending'}
+        salesRepName={callState.collaborationRequest?.salesRepName || ''}
+        salesRepId={callState.collaborationRequest?.salesRepId || ''}
+        onAccept={acceptCollaboration}
+        onDecline={declineCollaboration}
+      />
     </main>
   );
 }
