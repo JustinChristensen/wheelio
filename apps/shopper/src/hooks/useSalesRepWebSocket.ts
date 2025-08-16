@@ -96,14 +96,7 @@ export function useSalesRepWebSocket(salesRepId: string): UseSalesRepWebSocketRe
             audioElement = document.createElement('audio');
             audioElement.id = 'remote-shopper-audio';
             audioElement.autoplay = true;
-            audioElement.controls = true; // Show controls for debugging/testing
-            audioElement.style.position = 'fixed';
-            audioElement.style.bottom = '20px';
-            audioElement.style.right = '20px';
-            audioElement.style.zIndex = '9999';
-            audioElement.style.backgroundColor = 'rgba(0,0,0,0.8)';
-            audioElement.style.borderRadius = '8px';
-            audioElement.style.padding = '8px';
+            audioElement.style.display = 'none'; // Hide the audio element
             document.body.appendChild(audioElement);
           }
           
