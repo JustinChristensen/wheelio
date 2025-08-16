@@ -84,6 +84,39 @@ export function useSalesRepWebSocket(salesRepId: string): UseSalesRepWebSocketRe
         }
       };
 
+      // Handle remote audio stream from shopper
+      pc.ontrack = (event) => {
+        console.log('Received remote track:', event.track.kind);
+        
+        if (event.track.kind === 'audio') {
+          // Create or get existing audio element for remote audio
+          let audioElement = document.getElementById('remote-shopper-audio') as HTMLAudioElement;
+          
+          if (!audioElement) {
+            audioElement = document.createElement('audio');
+            audioElement.id = 'remote-shopper-audio';
+            audioElement.autoplay = true;
+            audioElement.controls = true; // Show controls for debugging/testing
+            audioElement.style.position = 'fixed';
+            audioElement.style.bottom = '20px';
+            audioElement.style.right = '20px';
+            audioElement.style.zIndex = '9999';
+            audioElement.style.backgroundColor = 'rgba(0,0,0,0.8)';
+            audioElement.style.borderRadius = '8px';
+            audioElement.style.padding = '8px';
+            document.body.appendChild(audioElement);
+          }
+          
+          // Set the remote stream
+          audioElement.srcObject = event.streams[0];
+          console.log('Remote shopper audio stream connected');
+        } else {
+          // Error: unexpected track type
+          console.error(`Unexpected track type received: ${event.track.kind}. Expected audio only.`);
+          setError(`Unexpected media type received: ${event.track.kind}. Audio connection failed.`);
+        }
+      };
+
       localStreamRef.current = stream;
       peerConnectionRef.current = pc;
       setIsMediaReady(true);
@@ -150,6 +183,26 @@ export function useSalesRepWebSocket(salesRepId: string): UseSalesRepWebSocketRe
         shopperId
       }));
     }
+    
+    // Clean up audio elements when releasing the call
+    const audioElement = document.getElementById('remote-shopper-audio');
+    if (audioElement) {
+      audioElement.remove();
+    }
+    
+    // Close peer connection
+    if (peerConnectionRef.current) {
+      peerConnectionRef.current.close();
+      peerConnectionRef.current = null;
+    }
+    
+    // Stop local streams
+    if (localStreamRef.current) {
+      localStreamRef.current.getTracks().forEach((track: MediaStreamTrack) => track.stop());
+      localStreamRef.current = null;
+    }
+    
+    setIsMediaReady(false);
   }, [salesRepId]);
 
   useEffect(() => {
@@ -299,6 +352,12 @@ export function useSalesRepWebSocket(salesRepId: string): UseSalesRepWebSocketRe
       }
       if (peerConnectionRef.current) {
         peerConnectionRef.current.close();
+      }
+      
+      // Clean up remote audio element
+      const audioElement = document.getElementById('remote-shopper-audio');
+      if (audioElement) {
+        audioElement.remove();
       }
     };
   }, []); // No dependencies needed since refs don't change

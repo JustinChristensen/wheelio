@@ -60,7 +60,38 @@ export const useCallQueue = () => {
 
     pc.ontrack = (event) => {
       console.log('Received remote track:', event.track.kind);
-      // TODO: Handle remote audio stream
+      
+      if (event.track.kind === 'audio') {
+        // Create or get existing audio element for remote audio
+        let audioElement = document.getElementById('remote-salesrep-audio') as HTMLAudioElement;
+        
+        if (!audioElement) {
+          audioElement = document.createElement('audio');
+          audioElement.id = 'remote-salesrep-audio';
+          audioElement.autoplay = true;
+          audioElement.controls = true; // Show controls for debugging/testing
+          audioElement.style.position = 'fixed';
+          audioElement.style.bottom = '20px';
+          audioElement.style.left = '20px';
+          audioElement.style.zIndex = '9999';
+          audioElement.style.backgroundColor = 'rgba(0,0,0,0.8)';
+          audioElement.style.borderRadius = '8px';
+          audioElement.style.padding = '8px';
+          document.body.appendChild(audioElement);
+        }
+        
+        // Set the remote stream
+        audioElement.srcObject = event.streams[0];
+        console.log('Remote sales rep audio stream connected');
+      } else {
+        // Error: unexpected track type
+        console.error(`Unexpected track type received: ${event.track.kind}. Expected audio only.`);
+        setCallState(prev => ({
+          ...prev,
+          status: 'error',
+          error: `Unexpected media type received: ${event.track.kind}. Audio connection failed.`
+        }));
+      }
     };
 
     // Handle ICE candidates
@@ -145,6 +176,12 @@ export const useCallQueue = () => {
       clearTimeout(reconnectTimeoutRef.current);
       reconnectTimeoutRef.current = null;
     }
+    
+    // Clean up remote audio element
+    const audioElement = document.getElementById('remote-salesrep-audio');
+    if (audioElement) {
+      audioElement.remove();
+    }
   }, []);
 
   const connect = useCallback(async () => {
@@ -225,7 +262,7 @@ export const useCallQueue = () => {
               }
               break;
               
-            case 'call_released':
+            case 'call_released': {
               setCallState(prev => ({
                 ...prev,
                 status: 'in-queue',
@@ -233,7 +270,20 @@ export const useCallQueue = () => {
                 assignedSalesRepId: undefined,
                 lastMessage: data.message
               }));
+              
+              // Clean up WebRTC connection when call is released
+              if (peerConnectionRef.current) {
+                peerConnectionRef.current.close();
+                peerConnectionRef.current = null;
+              }
+              
+              // Clean up remote audio element
+              const audioElement = document.getElementById('remote-salesrep-audio');
+              if (audioElement) {
+                audioElement.remove();
+              }
               break;
+            }
               
             case 'queue_left':
               setCallState(prev => ({
@@ -244,7 +294,7 @@ export const useCallQueue = () => {
               }));
               break;
               
-            case 'ice_candidate':
+            case 'ice_candidate': {
               console.log('Received ICE candidate from sales rep:', data);
               // Add the ICE candidate to the peer connection
               if (peerConnectionRef.current && data.iceCandidate) {
@@ -261,6 +311,7 @@ export const useCallQueue = () => {
                   });
               }
               break;
+            }
               
             case 'error':
               setCallState(prev => ({
