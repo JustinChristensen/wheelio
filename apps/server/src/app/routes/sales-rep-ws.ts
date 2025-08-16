@@ -6,7 +6,8 @@ import {
   assignCallToSalesRep,
   releaseCallFromSalesRep,
   getCallQueueSummary,
-  broadcastQueueUpdate
+  broadcastQueueUpdate,
+  getCallQueueEntry
 } from '../services/call-queue';
 import { SalesRepMessage } from '../types/call-queue';
 
@@ -91,6 +92,40 @@ const salesRepWebSocket: FastifyPluginAsync = async function (fastify) {
                 socket.send(JSON.stringify({
                   type: 'error',
                   message: `Call from shopper ${data.shopperId} not found`
+                }));
+              }
+            }
+            break;
+          }
+
+          case 'ice_candidate': {
+            if (data.shopperId && data.iceCandidate && currentSalesRepId) {
+              // Find the shopper's entry to ensure this sales rep is assigned to the call
+              const shopperEntry = getCallQueueEntry(data.shopperId);
+              
+              if (shopperEntry?.assignedSalesRepId === currentSalesRepId) {
+                // Forward the ICE candidate to the shopper
+                if (shopperEntry.shopperSocket && shopperEntry.shopperSocket.readyState === 1) { // WebSocket.OPEN
+                  try {
+                    shopperEntry.shopperSocket.send(JSON.stringify({
+                      type: 'ice_candidate',
+                      salesRepId: currentSalesRepId,
+                      shopperId: data.shopperId,
+                      iceCandidate: data.iceCandidate
+                    }));
+                    
+                    fastify.log.info(`Forwarded ICE candidate from sales rep ${currentSalesRepId} to shopper ${data.shopperId}`);
+                  } catch (error) {
+                    fastify.log.error(error, `Failed to forward ICE candidate to shopper ${data.shopperId}:`);
+                  }
+                } else {
+                  fastify.log.warn(`Shopper ${data.shopperId} not connected or socket not ready`);
+                }
+              } else {
+                fastify.log.warn(`Sales rep ${currentSalesRepId} not assigned to shopper ${data.shopperId} for ICE candidate exchange`);
+                socket.send(JSON.stringify({
+                  type: 'error',
+                  message: `Not assigned to shopper ${data.shopperId}`
                 }));
               }
             }

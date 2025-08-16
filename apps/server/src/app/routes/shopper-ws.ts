@@ -124,6 +124,56 @@ const shopperWebSocket: FastifyPluginAsync = async function (fastify) {
             break;
           }
 
+          case 'ice_candidate': {
+            if (data.shopperId && data.iceCandidate) {
+              // Find the shopper's entry to get the assigned sales rep
+              const shopperEntry = getCallQueueEntry(data.shopperId);
+              
+              if (shopperEntry?.assignedSalesRepId) {
+                // Forward the ICE candidate to the assigned sales rep
+                const salesRepSocket = getSalesRepSocket(shopperEntry.assignedSalesRepId);
+                
+                if (salesRepSocket && salesRepSocket.readyState === 1) { // WebSocket.OPEN
+                  try {
+                    salesRepSocket.send(JSON.stringify({
+                      type: 'ice_candidate',
+                      salesRepId: shopperEntry.assignedSalesRepId,
+                      shopperId: data.shopperId,
+                      iceCandidate: data.iceCandidate
+                    }));
+                    
+                    fastify.log.info(`Forwarded ICE candidate from shopper ${data.shopperId} to sales rep ${shopperEntry.assignedSalesRepId}`);
+                  } catch (error) {
+                    fastify.log.error(error, `Failed to forward ICE candidate to sales rep ${shopperEntry.assignedSalesRepId}:`);
+                    
+                    // Send error back to shopper
+                    socket.send(JSON.stringify({
+                      type: 'error',
+                      message: 'Failed to relay connection data to sales representative'
+                    }));
+                  }
+                } else {
+                  fastify.log.warn(`Sales rep ${shopperEntry.assignedSalesRepId} not connected or socket not ready`);
+                  
+                  // Send error back to shopper
+                  socket.send(JSON.stringify({
+                    type: 'error',
+                    message: 'Sales representative is not available for connection'
+                  }));
+                }
+              } else {
+                fastify.log.warn(`No assigned sales rep found for shopper ${data.shopperId} ICE candidate`);
+                
+                // Send error back to shopper
+                socket.send(JSON.stringify({
+                  type: 'error',
+                  message: 'No sales representative assigned for connection setup'
+                }));
+              }
+            }
+            break;
+          }
+
           default:
             fastify.log.warn(`Unknown message type from shopper: ${data.type}`);
         }

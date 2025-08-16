@@ -12,7 +12,7 @@ export interface CallQueueState {
 }
 
 interface CallQueueMessage {
-  type: 'connected' | 'queue_joined' | 'queue_left' | 'call_claimed' | 'call_answered' | 'call_released' | 'error' | 'sdp_answer';
+  type: 'connected' | 'queue_joined' | 'queue_left' | 'call_claimed' | 'call_answered' | 'call_released' | 'error' | 'sdp_answer' | 'ice_candidate';
   shopperId?: string;
   position?: number;
   salesRepId?: string;
@@ -21,6 +21,7 @@ interface CallQueueMessage {
   hasMicrophone?: boolean;
   sdpOffer?: RTCSessionDescriptionInit; // SDP offer from sales rep when answering a call
   sdpAnswer?: RTCSessionDescriptionInit; // SDP answer from shopper back to sales rep
+  iceCandidate?: RTCIceCandidateInit; // ICE candidate from sales rep
 }
 
 export const useCallQueue = () => {
@@ -60,6 +61,21 @@ export const useCallQueue = () => {
     pc.ontrack = (event) => {
       console.log('Received remote track:', event.track.kind);
       // TODO: Handle remote audio stream
+    };
+
+    // Handle ICE candidates
+    pc.onicecandidate = (event) => {
+      if (event.candidate && wsRef.current?.readyState === WebSocket.OPEN) {
+        // Send ICE candidate to sales rep
+        if (callStateRef.current.shopperId) {
+          wsRef.current.send(JSON.stringify({
+            type: 'ice_candidate',
+            shopperId: callStateRef.current.shopperId,
+            iceCandidate: event.candidate.toJSON()
+          }));
+          console.log('Sent ICE candidate to sales rep:', event.candidate);
+        }
+      }
     };
 
     return pc;
@@ -226,6 +242,24 @@ export const useCallQueue = () => {
                 position: undefined,
                 assignedSalesRepId: undefined
               }));
+              break;
+              
+            case 'ice_candidate':
+              console.log('Received ICE candidate from sales rep:', data);
+              // Add the ICE candidate to the peer connection
+              if (peerConnectionRef.current && data.iceCandidate) {
+                peerConnectionRef.current.addIceCandidate(new RTCIceCandidate(data.iceCandidate))
+                  .then(() => {
+                    console.log('Successfully added ICE candidate');
+                  }, (error) => {
+                    console.error('Failed to add ICE candidate:', error);
+                    setCallState(prev => ({
+                      ...prev,
+                      status: 'error',
+                      error: 'Failed to establish connection with sales representative'
+                    }));
+                  });
+              }
               break;
               
             case 'error':

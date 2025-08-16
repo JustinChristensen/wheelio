@@ -43,21 +43,23 @@ export interface CallQueueSummary {
 }
 
 export interface ShopperMessage {
-  type: 'join_queue' | 'leave_queue' | 'sdp_answer'
+  type: 'join_queue' | 'leave_queue' | 'sdp_answer' | 'ice_candidate'
   shopperId: string;
   // Media capabilities detected on client before joining queue
   mediaCapabilities?: MediaCapabilities;
   // WebRTC signaling data
   sdpOffer?: RTCSessionDescriptionInit;
   sdpAnswer?: RTCSessionDescriptionInit;
+  iceCandidate?: RTCIceCandidateInit;
 }
 
 export interface SalesRepMessage {
-  type: 'connect' | 'claim_call' | 'release_call' | 'sdp_answer'
+  type: 'connect' | 'claim_call' | 'release_call' | 'sdp_answer' | 'ice_candidate'
   salesRepId: string;
-  shopperId?: string; // For claim_call, release_call, and sdp_answer
+  shopperId?: string; // For claim_call, release_call, sdp_answer, and ice_candidate
   // WebRTC signaling data
   sdpOffer?: RTCSessionDescriptionInit;
   sdpAnswer?: RTCSessionDescriptionInit;
+  iceCandidate?: RTCIceCandidateInit;
 }
 

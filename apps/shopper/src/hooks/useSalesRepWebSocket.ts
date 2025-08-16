@@ -38,6 +38,7 @@ export function useSalesRepWebSocket(salesRepId: string): UseSalesRepWebSocketRe
   const localStreamRef = useRef<MediaStream | null>(null);
   const socketRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const currentCallRef = useRef<CallQueueSummary | null>(null);
 
   // Initialize WebRTC with media detection
   const initializeWebRTC = useCallback(async (): Promise<RTCPeerConnection | null> => {
@@ -67,6 +68,22 @@ export function useSalesRepWebSocket(salesRepId: string): UseSalesRepWebSocketRe
         pc.addTrack(track, stream);
       });
 
+      // Set up ICE candidate handling
+      pc.onicecandidate = (event) => {
+        if (event.candidate && socketRef.current?.readyState === WebSocket.OPEN) {
+          // Send ICE candidate to the current shopper if we have a call in progress
+          if (currentCallRef.current) {
+            socketRef.current.send(JSON.stringify({
+              type: 'ice_candidate',
+              salesRepId,
+              shopperId: currentCallRef.current.shopperId,
+              iceCandidate: event.candidate.toJSON()
+            }));
+            console.log('Sent ICE candidate to shopper:', event.candidate);
+          }
+        }
+      };
+
       localStreamRef.current = stream;
       peerConnectionRef.current = pc;
       setIsMediaReady(true);
@@ -79,7 +96,12 @@ export function useSalesRepWebSocket(salesRepId: string): UseSalesRepWebSocketRe
       setIsMediaReady(false);
       return null;
     }
-  }, []);
+  }, [salesRepId]); // Now only depends on salesRepId
+
+  // Keep currentCallRef in sync with currentCall state
+  useEffect(() => {
+    currentCallRef.current = currentCall;
+  }, [currentCall]);
 
   const claimCall = useCallback(async (shopperId: string) => {
     if (socketRef.current?.readyState !== WebSocket.OPEN) {
@@ -205,6 +227,20 @@ export function useSalesRepWebSocket(salesRepId: string): UseSalesRepWebSocketRe
                   }, (error) => {
                     console.error('Failed to set remote description:', error);
                     setError(`Failed to establish WebRTC connection: ${error instanceof Error ? error.message : 'Unknown error'}`);
+                  });
+              }
+              break;
+            }
+            case 'ice_candidate': {
+              console.log('Received ICE candidate from shopper:', data);
+              // Add the ICE candidate to the peer connection
+              if (peerConnectionRef.current && data.iceCandidate) {
+                peerConnectionRef.current.addIceCandidate(new RTCIceCandidate(data.iceCandidate))
+                  .then(() => {
+                    console.log('Successfully added ICE candidate');
+                  }, (error) => {
+                    console.error('Failed to add ICE candidate:', error);
+                    setError(`Failed to add connection candidate: ${error instanceof Error ? error.message : 'Unknown error'}`);
                   });
               }
               break;
