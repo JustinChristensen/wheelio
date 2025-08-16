@@ -142,7 +142,7 @@ export function useSalesRepWebSocket(salesRepId: string): UseSalesRepWebSocketRe
       setError(null);
 
       const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      const wsUrl = `${protocol}//${window.location.hostname}:3000/ws/calls/monitor`;
+      const wsUrl = `${protocol}//${window.location.hostname}:4200/api/ws/calls/monitor`;
 
       const socket = new WebSocket(wsUrl);
       socketRef.current = socket;

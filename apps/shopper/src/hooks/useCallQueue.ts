@@ -143,7 +143,7 @@ export const useCallQueue = () => {
       const mediaCapabilities = await detectMediaCapabilities();
       
       const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      const wsUrl = `${protocol}//${window.location.hostname}:3000/ws/call`;
+      const wsUrl = `${protocol}//${window.location.hostname}:4200/api/ws/call`;
       
       const ws = new WebSocket(wsUrl);
       wsRef.current = ws;
