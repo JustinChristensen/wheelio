@@ -43,7 +43,7 @@ export interface CallQueueSummary {
 }
 
 export interface ShopperMessage {
-  type: 'join_queue' | 'leave_queue' | 'sdp_answer' | 'ice_candidate' | 'end_call'
+  type: 'join_queue' | 'leave_queue' | 'sdp_answer' | 'ice_candidate' | 'end_call' | 'collaboration_response'
   shopperId: string;
   // Media capabilities detected on client before joining queue
   mediaCapabilities?: MediaCapabilities;
@@ -51,15 +51,46 @@ export interface ShopperMessage {
   sdpOffer?: RTCSessionDescriptionInit;
   sdpAnswer?: RTCSessionDescriptionInit;
   iceCandidate?: RTCIceCandidateInit;
+  // Collaboration data
+  salesRepId?: string; // For collaboration_response
+  accepted?: boolean; // For collaboration_response
 }
 
 export interface SalesRepMessage {
-  type: 'connect' | 'claim_call' | 'release_call' | 'sdp_answer' | 'ice_candidate'
+  type: 'connect' | 'claim_call' | 'release_call' | 'sdp_answer' | 'ice_candidate' | 'request_collaboration'
   salesRepId: string;
-  shopperId?: string; // For claim_call, release_call, sdp_answer, and ice_candidate
+  shopperId?: string; // For claim_call, release_call, sdp_answer, ice_candidate, and request_collaboration
   // WebRTC signaling data
   sdpOffer?: RTCSessionDescriptionInit;
   sdpAnswer?: RTCSessionDescriptionInit;
   iceCandidate?: RTCIceCandidateInit;
 }
+
+// Collaboration-specific message types
+export interface CollaborationRequestMessage {
+  type: 'collaboration_request';
+  shopperId: string;
+  salesRepId: string;
+  salesRepName?: string;
+}
+
+export interface CollaborationResponseMessage {
+  type: 'collaboration_response';
+  shopperId: string;
+  salesRepId: string;
+  accepted: boolean;
+}
+
+export interface CollaborationStatusMessage {
+  type: 'collaboration_status';
+  shopperId: string;
+  salesRepId: string;
+  status: 'pending' | 'accepted' | 'rejected' | 'ended';
+}
+
+// Union type for all collaboration messages
+export type CollaborationMessage = 
+  | CollaborationRequestMessage 
+  | CollaborationResponseMessage 
+  | CollaborationStatusMessage;
 

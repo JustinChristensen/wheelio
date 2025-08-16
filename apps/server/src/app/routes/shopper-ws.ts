@@ -8,7 +8,8 @@ import {
   getShopperQueuePosition,
   getCallQueueEntry,
   getSalesRepSocket,
-  releaseCallFromSalesRep
+  releaseCallFromSalesRep,
+  respondToCollaboration
 } from '../services/call-queue';
 import { ShopperMessage } from '../types/call-queue';
 
@@ -214,6 +215,63 @@ const shopperWebSocket: FastifyPluginAsync = async function (fastify) {
                 }
               } else {
                 fastify.log.warn(`No assigned sales rep found for shopper ${data.shopperId} trying to end call`);
+              }
+            }
+            break;
+          }
+
+          case 'collaboration_response': {
+            if (data.salesRepId && data.accepted !== undefined && currentShopperId) {
+              // Respond to the collaboration request
+              const collaborationSession = respondToCollaboration(
+                currentShopperId, 
+                data.salesRepId, 
+                data.accepted
+              );
+              
+              if (collaborationSession) {
+                // Get sales rep's socket to send the response
+                const salesRepSocket = getSalesRepSocket(data.salesRepId);
+                
+                if (salesRepSocket && salesRepSocket.readyState === 1) { // WebSocket.OPEN
+                  try {
+                    // Send collaboration response to sales rep
+                    salesRepSocket.send(JSON.stringify({
+                      type: 'collaboration_status',
+                      shopperId: currentShopperId,
+                      salesRepId: data.salesRepId,
+                      status: data.accepted ? 'accepted' : 'rejected'
+                    }));
+                    
+                    // Send confirmation to shopper
+                    socket.send(JSON.stringify({
+                      type: 'collaboration_status',
+                      shopperId: currentShopperId,
+                      salesRepId: data.salesRepId,
+                      status: data.accepted ? 'accepted' : 'rejected'
+                    }));
+                    
+                    fastify.log.info(
+                      `Shopper ${currentShopperId} ${data.accepted ? 'accepted' : 'rejected'} collaboration with sales rep ${data.salesRepId}`
+                    );
+                  } catch (error) {
+                    fastify.log.error(error, `Failed to send collaboration response to sales rep ${data.salesRepId}:`);
+                    socket.send(JSON.stringify({
+                      type: 'error',
+                      message: 'Failed to send collaboration response'
+                    }));
+                  }
+                } else {
+                  socket.send(JSON.stringify({
+                    type: 'error',
+                    message: 'Sales representative is not connected'
+                  }));
+                }
+              } else {
+                socket.send(JSON.stringify({
+                  type: 'error',
+                  message: 'Collaboration request not found or already responded to'
+                }));
               }
             }
             break;

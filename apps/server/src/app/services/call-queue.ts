@@ -11,6 +11,121 @@ import {
 const callQueue = new Map<string, CallQueueEntry>();
 const salesRepConnections = new Map<string, SalesRepConnection>();
 
+// Collaboration state tracking
+interface CollaborationSession {
+  shopperId: string;
+  salesRepId: string;
+  status: 'pending' | 'accepted' | 'rejected' | 'ended';
+  requestedAt: number;
+  respondedAt?: number;
+}
+
+// In-memory storage for collaboration sessions
+const collaborationSessions = new Map<string, CollaborationSession>();
+
+/**
+ * Generate a unique key for a collaboration session
+ */
+function getCollaborationKey(shopperId: string, salesRepId: string): string {
+  return `${salesRepId}:${shopperId}`;
+}
+
+/**
+ * Request collaboration between a sales rep and shopper
+ */
+export function requestCollaboration(shopperId: string, salesRepId: string): CollaborationSession | null {
+  // Verify the sales rep is currently handling this shopper's call
+  const callEntry = getCallQueueEntry(shopperId);
+  if (!callEntry || callEntry.assignedSalesRepId !== salesRepId) {
+    return null;
+  }
+
+  const sessionKey = getCollaborationKey(shopperId, salesRepId);
+  
+  // Check if there's already a pending collaboration request
+  const existingSession = collaborationSessions.get(sessionKey);
+  if (existingSession && existingSession.status === 'pending') {
+    return null; // Already have a pending request
+  }
+
+  const session: CollaborationSession = {
+    shopperId,
+    salesRepId,
+    status: 'pending',
+    requestedAt: Date.now()
+  };
+
+  collaborationSessions.set(sessionKey, session);
+  return session;
+}
+
+/**
+ * Respond to a collaboration request
+ */
+export function respondToCollaboration(
+  shopperId: string, 
+  salesRepId: string, 
+  accepted: boolean
+): CollaborationSession | null {
+  const sessionKey = getCollaborationKey(shopperId, salesRepId);
+  const session = collaborationSessions.get(sessionKey);
+  
+  if (!session || session.status !== 'pending') {
+    return null;
+  }
+
+  session.status = accepted ? 'accepted' : 'rejected';
+  session.respondedAt = Date.now();
+  
+  collaborationSessions.set(sessionKey, session);
+  return session;
+}
+
+/**
+ * End a collaboration session
+ */
+export function endCollaboration(shopperId: string, salesRepId: string): CollaborationSession | null {
+  const sessionKey = getCollaborationKey(shopperId, salesRepId);
+  const session = collaborationSessions.get(sessionKey);
+  
+  if (!session) {
+    return null;
+  }
+
+  session.status = 'ended';
+  collaborationSessions.set(sessionKey, session);
+  return session;
+}
+
+/**
+ * Get collaboration session status
+ */
+export function getCollaborationStatus(shopperId: string, salesRepId: string): CollaborationSession | null {
+  const sessionKey = getCollaborationKey(shopperId, salesRepId);
+  return collaborationSessions.get(sessionKey) || null;
+}
+
+/**
+ * Clean up expired collaboration requests (older than 5 minutes)
+ */
+export function cleanupExpiredCollaborationRequests(): number {
+  const now = Date.now();
+  const expireAfterMs = 5 * 60 * 1000; // 5 minutes
+  let cleanedCount = 0;
+
+  for (const [key, session] of collaborationSessions.entries()) {
+    if (session.status === 'pending' && (now - session.requestedAt) > expireAfterMs) {
+      collaborationSessions.delete(key);
+      cleanedCount++;
+    }
+  }
+
+  return cleanedCount;
+}
+
+/**
+ * Periodic cleanup for disconnected callsnew Map<string, SalesRepConnection>();
+
 /**
  * Add or update a shopper in the call queue with media capabilities
  */
@@ -321,12 +436,17 @@ export function cleanupOldDisconnectedCalls(maxAgeMinutes = 30): number {
  */
 function startPeriodicCleanup(): () => void {
   const cleanupInterval = setInterval(() => {
-    const cleanedCount = cleanupOldDisconnectedCalls(1); // 1 minute = 60 seconds
+    const cleanedCallsCount = cleanupOldDisconnectedCalls(1); // 1 minute = 60 seconds
+    const cleanedCollaborationCount = cleanupExpiredCollaborationRequests();
     
-    if (cleanedCount > 0) {
-      console.log(`Periodic cleanup: Removed ${cleanedCount} old disconnected calls`);
+    if (cleanedCallsCount > 0) {
+      console.log(`Periodic cleanup: Removed ${cleanedCallsCount} old disconnected calls`);
       // Broadcast updated queue to all sales reps after cleanup
       broadcastQueueUpdate();
+    }
+    
+    if (cleanedCollaborationCount > 0) {
+      console.log(`Periodic cleanup: Removed ${cleanedCollaborationCount} expired collaboration requests`);
     }
   }, 30000); // Run every 30 seconds
   

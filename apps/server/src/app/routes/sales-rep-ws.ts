@@ -7,7 +7,9 @@ import {
   releaseCallFromSalesRep,
   getCallQueueSummary,
   broadcastQueueUpdate,
-  getCallQueueEntry
+  getCallQueueEntry,
+  requestCollaboration,
+  getShopperSocket
 } from '../services/call-queue';
 import { SalesRepMessage } from '../types/call-queue';
 
@@ -126,6 +128,57 @@ const salesRepWebSocket: FastifyPluginAsync = async function (fastify) {
                 socket.send(JSON.stringify({
                   type: 'error',
                   message: `Not assigned to shopper ${data.shopperId}`
+                }));
+              }
+            }
+            break;
+          }
+
+          case 'request_collaboration': {
+            if (data.shopperId && currentSalesRepId) {
+              // Request collaboration session
+              const collaborationSession = requestCollaboration(data.shopperId, currentSalesRepId);
+              
+              if (collaborationSession) {
+                // Get shopper's socket to send the request
+                const shopperSocket = getShopperSocket(data.shopperId);
+                
+                if (shopperSocket && shopperSocket.readyState === 1) { // WebSocket.OPEN
+                  try {
+                    // Send collaboration request to shopper
+                    shopperSocket.send(JSON.stringify({
+                      type: 'collaboration_request',
+                      shopperId: data.shopperId,
+                      salesRepId: currentSalesRepId,
+                      salesRepName: `Sales Rep ${currentSalesRepId.slice(-8)}` // Simplified name
+                    }));
+                    
+                    // Send confirmation to sales rep
+                    socket.send(JSON.stringify({
+                      type: 'collaboration_status',
+                      shopperId: data.shopperId,
+                      salesRepId: currentSalesRepId,
+                      status: 'pending'
+                    }));
+                    
+                    fastify.log.info(`Sales rep ${currentSalesRepId} requested collaboration with shopper ${data.shopperId}`);
+                  } catch (error) {
+                    fastify.log.error(error, `Failed to send collaboration request to shopper ${data.shopperId}:`);
+                    socket.send(JSON.stringify({
+                      type: 'error',
+                      message: 'Failed to send collaboration request'
+                    }));
+                  }
+                } else {
+                  socket.send(JSON.stringify({
+                    type: 'error',
+                    message: 'Shopper is not connected'
+                  }));
+                }
+              } else {
+                socket.send(JSON.stringify({
+                  type: 'error',
+                  message: 'Cannot request collaboration - call not found or request already pending'
                 }));
               }
             }
