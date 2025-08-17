@@ -11,10 +11,10 @@ export interface CallQueueState {
   hasMicrophone?: boolean; // Add microphone detection result
   // Collaboration state
   collaborationRequest?: {
-    salesRepId: string;
-    salesRepName: string;
+    salesRepId?: string;
+    salesRepName?: string;
   };
-  collaborationStatus: 'none' | 'pending' | 'accepted' | 'rejected';
+  collaborationStatus?: 'none' | 'pending' | 'accepted' | 'rejected' | 'ended';
 }
 
 interface CallQueueMessage {
@@ -339,7 +339,6 @@ export const useCallQueue = () => {
               break;
 
             case 'collaboration_request': {
-              console.log('Received collaboration request:', data);
               if (data.salesRepId && data.salesRepName) {
                 setCallState(prev => ({
                   ...prev,
