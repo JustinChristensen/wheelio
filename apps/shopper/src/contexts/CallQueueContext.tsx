@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import React, { createContext, useContext, useState, useRef, useEffect, useCallback, ReactNode } from 'react';
 import { detectMediaCapabilities } from '../utils/media-detection';
 
 export interface CallQueueState {
@@ -7,8 +7,8 @@ export interface CallQueueState {
   shopperId?: string;
   assignedSalesRepId?: string;
   error?: string;
-  lastMessage?: string; // Add this to store the latest status message
-  hasMicrophone?: boolean; // Add microphone detection result
+  lastMessage?: string;
+  hasMicrophone?: boolean;
   // Collaboration state
   collaborationRequest?: {
     salesRepId?: string;
@@ -25,15 +25,32 @@ interface CallQueueMessage {
   previousSalesRepId?: string;
   message?: string;
   hasMicrophone?: boolean;
-  sdpOffer?: RTCSessionDescriptionInit; // SDP offer from sales rep when answering a call
-  sdpAnswer?: RTCSessionDescriptionInit; // SDP answer from shopper back to sales rep
-  iceCandidate?: RTCIceCandidateInit; // ICE candidate from sales rep
+  sdpOffer?: RTCSessionDescriptionInit;
+  sdpAnswer?: RTCSessionDescriptionInit;
+  iceCandidate?: RTCIceCandidateInit;
   // Collaboration fields
-  salesRepName?: string; // For collaboration_request
-  status?: 'pending' | 'accepted' | 'rejected' | 'ended'; // For collaboration_status
+  salesRepName?: string;
+  status?: 'pending' | 'accepted' | 'rejected' | 'ended';
 }
 
-export const useCallQueue = () => {
+interface CallQueueContextType {
+  callState: CallQueueState;
+  connect: () => Promise<void>;
+  disconnect: () => void;
+  endCall: () => void;
+  acceptCollaboration: () => void;
+  declineCollaboration: () => void;
+  isConnected: boolean;
+  peerConnection: RTCPeerConnection | null;
+}
+
+const CallQueueContext = createContext<CallQueueContextType | undefined>(undefined);
+
+interface CallQueueProviderProps {
+  children: ReactNode;
+}
+
+export const CallQueueProvider: React.FC<CallQueueProviderProps> = ({ children }) => {
   const [callState, setCallState] = useState<CallQueueState>({ 
     status: 'disconnected',
     collaborationStatus: 'none'
@@ -426,7 +443,7 @@ export const useCallQueue = () => {
     }
     
     cleanup();
-    setCallState({ status: 'disconnected' });
+    setCallState({ status: 'disconnected', collaborationStatus: 'none' });
     setReconnectAttempts(0);
   }, [cleanup]);
 
@@ -510,7 +527,7 @@ export const useCallQueue = () => {
     return cleanup;
   }, [cleanup]);
 
-  return {
+  const value: CallQueueContextType = {
     callState,
     connect,
     disconnect,
@@ -520,4 +537,18 @@ export const useCallQueue = () => {
     isConnected: callState.status !== 'disconnected' && callState.status !== 'error',
     peerConnection: peerConnectionRef.current
   };
+
+  return (
+    <CallQueueContext.Provider value={value}>
+      {children}
+    </CallQueueContext.Provider>
+  );
+};
+
+export const useCallQueue = (): CallQueueContextType => {
+  const context = useContext(CallQueueContext);
+  if (context === undefined) {
+    throw new Error('useCallQueue must be used within a CallQueueProvider');
+  }
+  return context;
 };

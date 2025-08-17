@@ -1,5 +1,5 @@
 import React from 'react';
-import { CallQueueState } from '../../hooks/useCallQueue';
+import { CallQueueState } from '../../contexts/CallQueueContext';
 
 interface CallStatusProps {
   callState: CallQueueState;

@@ -5,16 +5,24 @@ import AISalesAgent from '../AISalesAgent/AISalesAgent';
 import CollaborationRequestModal from '../CollaborationRequestModal/CollaborationRequestModal';
 import { CarFilters } from 'car-data';
 import { useCarData } from '../../hooks/useCarData';
-import { useCallQueue } from '../../hooks/useCallQueue';
+import { CallQueueProvider, useCallQueue } from '../../contexts/CallQueueContext';
 
 export function ShopperPage() {
+  return (
+    <CallQueueProvider>
+      <ShopperPageContent />
+    </CallQueueProvider>
+  );
+}
+
+function ShopperPageContent() {
   const [filters, setFilters] = useState<CarFilters>({});
   const [isAIDrawerOpen, setIsAIDrawerOpen] = useState(true);
   
   // Fetch car data from API
   const { cars, loading, error } = useCarData();
   
-  // Call queue for collaboration features
+  // Call queue for collaboration features - now from context
   const { callState, acceptCollaboration, declineCollaboration } = useCallQueue();
 
   return (

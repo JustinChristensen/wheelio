@@ -3,7 +3,7 @@ import { CarFilters, Car } from 'car-data';
 import { ApiService } from '../../services/api';
 import { calculateCarRanks, sortCarsByRank } from '../../utils/carRanking';
 import { areFiltersEqual, hasActiveFilters } from '../../utils/filterComparison';
-import { useCallQueue } from '../../hooks/useCallQueue';
+import { useCallQueue } from '../../contexts/CallQueueContext';
 import CallStatus from '../CallStatus/CallStatus';
 
 interface Message {
