@@ -19,9 +19,10 @@ interface AISalesAgentProps {
   onFiltersUpdate: (filters: CarFilters) => void;
   currentFilters: CarFilters;
   cars: Car[];
+  isImpersonationMode?: boolean;
 }
 
-const AISalesAgent: React.FC<AISalesAgentProps> = ({ isOpen, onToggle, onFiltersUpdate, currentFilters, cars }) => {
+const AISalesAgent: React.FC<AISalesAgentProps> = ({ isOpen, onToggle, onFiltersUpdate, currentFilters, cars, isImpersonationMode = false }) => {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
@@ -346,21 +347,24 @@ const AISalesAgent: React.FC<AISalesAgentProps> = ({ isOpen, onToggle, onFilters
                 <span>Voice Chat</span>
               </button>
               
-              <button 
-                onClick={isCallConnected ? disconnectFromQueue : connectToQueue}
-                className={`px-3 py-1 text-xs rounded-md transition-colors ${
-                  isCallConnected 
-                    ? 'bg-red-600 text-white hover:bg-red-700' 
-                    : 'bg-green-600 text-white hover:bg-green-700'
-                }`}
-              >
-                {isCallConnected ? 'End Call' : 'Talk to Human Agent'}
-                {callState.hasMicrophone !== undefined && (
-                  <span className="ml-1" title={callState.hasMicrophone ? 'Voice call available' : 'Voice not available'}>
-                    {callState.hasMicrophone ? '🎤' : '📞'}
-                  </span>
-                )}
-              </button>
+              {/* Hide the "Talk to Human Agent" button in impersonation mode */}
+              {!isImpersonationMode && (
+                <button 
+                  onClick={isCallConnected ? disconnectFromQueue : connectToQueue}
+                  className={`px-3 py-1 text-xs rounded-md transition-colors ${
+                    isCallConnected 
+                      ? 'bg-red-600 text-white hover:bg-red-700' 
+                      : 'bg-green-600 text-white hover:bg-green-700'
+                  }`}
+                >
+                  {isCallConnected ? 'End Call' : 'Talk to Human Agent'}
+                  {callState.hasMicrophone !== undefined && (
+                    <span className="ml-1" title={callState.hasMicrophone ? 'Voice call available' : 'Voice not available'}>
+                      {callState.hasMicrophone ? '🎤' : '📞'}
+                    </span>
+                  )}
+                </button>
+              )}
             </div>
           </div>
         </>

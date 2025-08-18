@@ -55,9 +55,10 @@ const CallQueueContext = createContext<CallQueueContextType | undefined>(undefin
 
 interface CallQueueProviderProps {
   children: ReactNode;
+  isImpersonationMode?: boolean;
 }
 
-export const CallQueueProvider: React.FC<CallQueueProviderProps> = ({ children }) => {
+export const CallQueueProvider: React.FC<CallQueueProviderProps> = ({ children, isImpersonationMode = false }) => {
   const [callState, setCallState] = useState<CallQueueState>({ 
     status: 'disconnected',
     collaborationStatus: 'none'
@@ -72,10 +73,10 @@ export const CallQueueProvider: React.FC<CallQueueProviderProps> = ({ children }
   const [reconnectAttempts, setReconnectAttempts] = useState(0);
   const maxReconnectAttempts = 5;
 
-  // Y.js collaboration hook
+  // Y.js collaboration hook - disabled in impersonation mode
   const yjsCollaboration = useYjsCollaboration({
     shopperId: callState.shopperId || '',
-    enabled: callState.collaborationStatus === 'accepted'
+    enabled: !isImpersonationMode && callState.collaborationStatus === 'accepted'
   });
 
   // Collaboration cleanup function
@@ -234,6 +235,12 @@ export const CallQueueProvider: React.FC<CallQueueProviderProps> = ({ children }
   }, []);
 
   const connect = useCallback(async () => {
+    // Don't allow connection in impersonation mode
+    if (isImpersonationMode) {
+      console.log('Connection disabled in impersonation mode');
+      return;
+    }
+    
     if (wsRef.current?.readyState === WebSocket.OPEN) {
       return; // Already connected
     }
@@ -466,7 +473,7 @@ export const CallQueueProvider: React.FC<CallQueueProviderProps> = ({ children }
         error: 'Failed to connect to call service'
       }));
     }
-  }, [reconnectAttempts, generateShopperId, handleSdpOffer, cleanupCollaboration]);
+  }, [reconnectAttempts, generateShopperId, handleSdpOffer, cleanupCollaboration, isImpersonationMode]);
 
   const disconnect = useCallback(() => {
     const currentShopperId = callStateRef.current.shopperId;

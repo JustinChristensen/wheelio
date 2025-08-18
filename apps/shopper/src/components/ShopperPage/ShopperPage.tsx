@@ -21,13 +21,8 @@ interface ShopperPageProps {
 }
 
 export function ShopperPage(props: ShopperPageProps = {}) {
-  // If we're in impersonation mode, don't wrap with CallQueueProvider
-  if (props.impersonateShopperId) {
-    return <ShopperPageContent {...props} />;
-  }
-  
   return (
-    <CallQueueProvider>
+    <CallQueueProvider isImpersonationMode={!!props.impersonateShopperId}>
       <ShopperPageContent {...props} />
     </CallQueueProvider>
   );
@@ -45,14 +40,14 @@ function ShopperPageContent({
   // Fetch car data from API
   const { cars, loading, error } = useCarData();
   
-  // Always call the hook, but conditionally use its values
+  // Call queue context - always available since we're inside the provider
   const callQueueContext = useCallQueue();
   
   // Determine which values to use based on mode
-  const shopperId = impersonateShopperId || (callQueueContext?.callState.shopperId || '');
-  const collaborationStatus = isCollaborationActive ? 'accepted' : (callQueueContext?.callState.collaborationStatus || 'none');
-  const yjsDoc = externalYjsDoc || callQueueContext?.yjsDoc;
-  const isYjsConnected = externalIsYjsConnected ?? (callQueueContext?.isYjsConnected ?? false);
+  const shopperId = impersonateShopperId || callQueueContext.callState.shopperId || '';
+  const collaborationStatus = isCollaborationActive ? 'accepted' : callQueueContext.callState.collaborationStatus || 'none';
+  const yjsDoc = externalYjsDoc || callQueueContext.yjsDoc;
+  const isYjsConnected = externalIsYjsConnected ?? callQueueContext.isYjsConnected;
 
   // Y.js filter synchronization for real-time collaboration
   const { isConnected: isFilterSyncConnected } = useYjsFilterSync({
@@ -134,17 +129,18 @@ function ShopperPageContent({
           onFiltersUpdate={setFilters}
           currentFilters={filters}
           cars={cars}
+          isImpersonationMode={!!impersonateShopperId}
         />
       </div>
 
       {/* Collaboration Request Modal - only show when not in impersonation mode */}
       {!impersonateShopperId && (
         <CollaborationRequestModal
-          isOpen={!!(callQueueContext?.callState.collaborationRequest && callQueueContext?.callState.collaborationStatus === 'pending')}
-          salesRepName={callQueueContext?.callState.collaborationRequest?.salesRepName || ''}
-          salesRepId={callQueueContext?.callState.collaborationRequest?.salesRepId || ''}
-          onAccept={callQueueContext?.acceptCollaboration || function() { /* no-op */ }}
-          onDecline={callQueueContext?.declineCollaboration || function() { /* no-op */ }}
+          isOpen={!!(callQueueContext.callState.collaborationRequest && callQueueContext.callState.collaborationStatus === 'pending')}
+          salesRepName={callQueueContext.callState.collaborationRequest?.salesRepName || ''}
+          salesRepId={callQueueContext.callState.collaborationRequest?.salesRepId || ''}
+          onAccept={callQueueContext.acceptCollaboration}
+          onDecline={callQueueContext.declineCollaboration}
         />
       )}
     </main>
