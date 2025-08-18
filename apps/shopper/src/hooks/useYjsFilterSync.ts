@@ -25,6 +25,8 @@ export function useYjsFilterSync({
   const { doc, isConnected } = useYjsCollaboration({ shopperId, enabled });
   const lastUpdateSourceRef = useRef<'local' | 'remote'>('local');
   const filtersMapRef = useRef<Y.Map<unknown> | null>(null);
+  const isApplyingRemoteChangeRef = useRef(false);
+  const lastSyncedFiltersRef = useRef<CarFilters>(filters);
 
   // Initialize the filters map and set up observers
   useEffect(() => {
@@ -38,13 +40,10 @@ export function useYjsFilterSync({
 
     // Observer for incoming filter changes from remote (sales rep)
     const observer = (event: Y.YMapEvent<unknown>) => {
-      // Only process remote changes to avoid feedback loops
-      if (lastUpdateSourceRef.current === 'local') {
-        lastUpdateSourceRef.current = 'remote';
-        return;
-      }
-
       console.log(`[Filter Sync ${role}] Y.js filters changed by remote user:`, event.changes.keys);
+      
+      // Mark this as a remote update to prevent feedback loops
+      lastUpdateSourceRef.current = 'remote';
       
       // Convert Y.js map back to CarFilters object
       const remoteFilters: CarFilters = {};
@@ -82,8 +81,17 @@ export function useYjsFilterSync({
       });
 
       console.log(`[Filter Sync ${role}] Applying remote filter changes:`, completeFilters);
-      lastUpdateSourceRef.current = 'remote';
+      
+      // Mark that we're applying a remote change
+      isApplyingRemoteChangeRef.current = true;
       onFiltersChange(completeFilters);
+      
+      // Reset the flag after applying remote changes
+      setTimeout(() => {
+        lastUpdateSourceRef.current = 'local';
+        isApplyingRemoteChangeRef.current = false;
+        lastSyncedFiltersRef.current = completeFilters;
+      }, 0);
     };
 
     filtersMap.observe(observer);
@@ -96,11 +104,13 @@ export function useYjsFilterSync({
 
   // Function to send local filter changes to Y.js
   const syncFiltersToYjs = useCallback((newFilters: CarFilters) => {
-    if (!filtersMapRef.current || !enabled || lastUpdateSourceRef.current === 'remote') {
-      // Reset the flag after processing remote changes
-      if (lastUpdateSourceRef.current === 'remote') {
-        lastUpdateSourceRef.current = 'local';
-      }
+    if (!filtersMapRef.current || !enabled) {
+      return;
+    }
+
+    // Skip if this is the result of a remote update to avoid feedback loops
+    if (lastUpdateSourceRef.current === 'remote') {
+      lastUpdateSourceRef.current = 'local';
       return;
     }
 
@@ -146,12 +156,21 @@ export function useYjsFilterSync({
     }
   }, [enabled, shopperId, doc, role]);
 
-  // Sync local filter changes to Y.js when filters change
+  // Sync local filter changes to Y.js when filters change (but only for user-initiated changes)
   useEffect(() => {
-    if (enabled && isConnected) {
-      syncFiltersToYjs(filters);
+    if (!enabled || !isConnected || isApplyingRemoteChangeRef.current) {
+      return;
     }
-  }, [filters, enabled, isConnected, syncFiltersToYjs]);
+
+    // Check if filters actually changed compared to what we last synced
+    const filtersChanged = JSON.stringify(filters) !== JSON.stringify(lastSyncedFiltersRef.current);
+    
+    if (filtersChanged) {
+      console.log(`[Filter Sync ${role}] User changed filters, syncing to Y.js:`, filters);
+      syncFiltersToYjs(filters);
+      lastSyncedFiltersRef.current = filters;
+    }
+  }, [filters, enabled, isConnected, syncFiltersToYjs, role]);
 
   return {
     isConnected,

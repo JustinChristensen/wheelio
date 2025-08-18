@@ -53,23 +53,6 @@ export function useYjsCollaboration({ shopperId, enabled }: UseYjsCollaborationO
       console.error('Y.js WebSocket connection error:', error);
       setIsConnected(false);
     });
-
-    // Add a simple test map to verify bidirectional connection
-    const testMap = doc.getMap('test');
-    testMap.observe((event) => {
-      console.log('Y.js test map changed:', event.changes.keys);
-      event.changes.keys.forEach((change, key) => {
-        if (change.action === 'add' || change.action === 'update') {
-          console.log(`Key "${key}" ${change.action}ed with value:`, testMap.get(key));
-        }
-      });
-    });
-
-    // Set a test value to verify connection (with role identifier)
-    const timestamp = Date.now();
-    testMap.set('lastUpdate', timestamp);
-    testMap.set('updatedBy', 'shopper');
-    testMap.set('shopperId', shopperId);
     
     console.log('Y.js document created and connected for shopper:', shopperId);
 
