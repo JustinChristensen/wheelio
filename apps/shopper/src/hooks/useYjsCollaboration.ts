@@ -49,7 +49,7 @@ export function useYjsCollaboration({ shopperId, enabled }: UseYjsCollaborationO
       setIsConnected(false);
     });
 
-    provider.on('connection-error', (error: Error) => {
+    provider.on('connection-error', (error: Event) => {
       console.error('Y.js WebSocket connection error:', error);
       setIsConnected(false);
     });
@@ -68,7 +68,8 @@ export function useYjsCollaboration({ shopperId, enabled }: UseYjsCollaborationO
     // Set a test value to verify connection (with role identifier)
     const timestamp = Date.now();
     testMap.set('lastUpdate', timestamp);
-    testMap.set('updatedBy', 'shopper'); // or 'salesRep' depending on who's connecting
+    testMap.set('updatedBy', 'shopper');
+    testMap.set('shopperId', shopperId);
     
     console.log('Y.js document created and connected for shopper:', shopperId);
 

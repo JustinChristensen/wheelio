@@ -5,6 +5,7 @@ import AISalesAgent from '../AISalesAgent/AISalesAgent';
 import CollaborationRequestModal from '../CollaborationRequestModal/CollaborationRequestModal';
 import { CarFilters } from 'car-data';
 import { useCarData } from '../../hooks/useCarData';
+import { useYjsFilterSync } from '../../hooks/useYjsFilterSync';
 import { CallQueueProvider, useCallQueue } from '../../contexts/CallQueueContext';
 
 export function ShopperPage() {
@@ -30,6 +31,14 @@ function ShopperPageContent() {
     yjsDoc,
     isYjsConnected
   } = useCallQueue();
+
+  // Y.js filter synchronization for real-time collaboration
+  const { isConnected: isFilterSyncConnected } = useYjsFilterSync({
+    shopperId: callState.shopperId || '',
+    enabled: callState.collaborationStatus === 'accepted',
+    filters,
+    onFiltersChange: setFilters,
+  });
 
   // Test Y.js functionality when connected
   useEffect(() => {
@@ -73,11 +82,13 @@ function ShopperPageContent() {
         {callState.collaborationStatus === 'accepted' && (
           <div className="absolute top-4 right-4 z-10">
             <div className={`px-3 py-2 rounded-lg shadow-lg text-sm font-medium ${
-              isYjsConnected 
+              isYjsConnected && isFilterSyncConnected
                 ? 'bg-green-100 text-green-800 border border-green-200' 
                 : 'bg-orange-100 text-orange-800 border border-orange-200'
             }`}>
-              {isYjsConnected ? '🔗 Collaboration Active' : '⏳ Connecting...'}
+              {isYjsConnected && isFilterSyncConnected 
+                ? '🔗 Collaboration Active' 
+                : '⏳ Connecting...'}
             </div>
           </div>
         )}
