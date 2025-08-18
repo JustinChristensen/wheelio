@@ -1,5 +1,7 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import { CarFilters } from 'car-data';
 import { useSalesRepWebSocket } from '../../hooks/useSalesRepWebSocket';
+import { useYjsFilterSync } from '../../hooks/useYjsFilterSync';
 import ConnectionStatus from '../ConnectionStatus/ConnectionStatus';
 import CallQueueGrid from '../CallQueueGrid/CallQueueGrid';
 
@@ -7,6 +9,8 @@ import CallQueueGrid from '../CallQueueGrid/CallQueueGrid';
 const SALES_REP_ID = 'sales-rep-aij0c1sfo';
 
 export function SalesRepPage() {
+  // Filter state for sales rep (will be synced with shopper)
+  const [filters, setFilters] = useState<CarFilters>({});
   
   const {
     queue,
@@ -24,6 +28,26 @@ export function SalesRepPage() {
     yjsDoc,
     isYjsConnected
   } = useSalesRepWebSocket(SALES_REP_ID);
+
+  // Y.js filter synchronization for real-time collaboration
+  const { isConnected: isFilterSyncConnected } = useYjsFilterSync({
+    shopperId: currentCall?.shopperId || '',
+    enabled: collaborationStatus === 'accepted' && !!currentCall,
+    filters,
+    onFiltersChange: (newFilters) => {
+      console.log('[Sales Rep] Received filter update from shopper:', newFilters);
+      setFilters(newFilters);
+    },
+    role: 'salesRep',
+  });
+
+  // Reset filters when collaboration ends or call changes
+  useEffect(() => {
+    if (collaborationStatus !== 'accepted' || !currentCall) {
+      console.log('[Sales Rep] Collaboration ended, clearing filters');
+      setFilters({});
+    }
+  }, [collaborationStatus, currentCall]);
 
   // Test Y.js functionality when connected
   useEffect(() => {
@@ -112,6 +136,11 @@ export function SalesRepPage() {
                             isYjsConnected ? 'bg-blue-100 text-blue-800' : 'bg-orange-100 text-orange-800'
                           }`}>
                             Y.js: {isYjsConnected ? 'Connected' : 'Connecting...'}
+                          </span>
+                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                            isFilterSyncConnected ? 'bg-purple-100 text-purple-800' : 'bg-orange-100 text-orange-800'
+                          }`}>
+                            Filters: {isFilterSyncConnected ? 'Synced' : 'Syncing...'}
                           </span>
                         </div>
                       )}

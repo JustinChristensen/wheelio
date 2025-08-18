@@ -8,6 +8,7 @@ interface UseYjsFilterSyncOptions {
   enabled: boolean;
   filters: CarFilters;
   onFiltersChange: (filters: CarFilters) => void;
+  role?: 'shopper' | 'salesRep'; // Add role to distinguish between shopper and sales rep
 }
 
 /**
@@ -18,7 +19,8 @@ export function useYjsFilterSync({
   shopperId, 
   enabled, 
   filters, 
-  onFiltersChange 
+  onFiltersChange,
+  role = 'shopper' // Default to shopper for backward compatibility
 }: UseYjsFilterSyncOptions) {
   const { doc, isConnected } = useYjsCollaboration({ shopperId, enabled });
   const lastUpdateSourceRef = useRef<'local' | 'remote'>('local');
@@ -42,7 +44,7 @@ export function useYjsFilterSync({
         return;
       }
 
-      console.log('Y.js filters changed by remote user:', event.changes.keys);
+      console.log(`[Filter Sync ${role}] Y.js filters changed by remote user:`, event.changes.keys);
       
       // Convert Y.js map back to CarFilters object
       const remoteFilters: CarFilters = {};
@@ -51,7 +53,7 @@ export function useYjsFilterSync({
       event.changes.keys.forEach((change, key) => {
         if (change.action === 'add' || change.action === 'update') {
           const value = filtersMap.get(key);
-          console.log(`[Filter Sync] Remote ${change.action} for "${key}":`, value);
+          console.log(`[Filter Sync ${role}] Remote ${change.action} for "${key}":`, value);
           if (value !== undefined && value !== null) {
             // Handle array values (most filter properties are arrays)
             if (Array.isArray(value)) {
@@ -61,7 +63,7 @@ export function useYjsFilterSync({
             }
           }
         } else if (change.action === 'delete') {
-          console.log(`[Filter Sync] Remote delete for "${key}"`);
+          console.log(`[Filter Sync ${role}] Remote delete for "${key}"`);
           // Key was deleted, so we'll omit it from the filters object
           // (it will be undefined in the resulting object)
         }
@@ -79,7 +81,7 @@ export function useYjsFilterSync({
         }
       });
 
-      console.log('[Filter Sync] Applying remote filter changes:', completeFilters);
+      console.log(`[Filter Sync ${role}] Applying remote filter changes:`, completeFilters);
       lastUpdateSourceRef.current = 'remote';
       onFiltersChange(completeFilters);
     };
@@ -90,7 +92,7 @@ export function useYjsFilterSync({
     return () => {
       filtersMap.unobserve(observer);
     };
-  }, [doc, enabled, onFiltersChange]);
+  }, [doc, enabled, onFiltersChange, role]);
 
   // Function to send local filter changes to Y.js
   const syncFiltersToYjs = useCallback((newFilters: CarFilters) => {
@@ -102,7 +104,7 @@ export function useYjsFilterSync({
       return;
     }
 
-    console.log('[Filter Sync] Syncing local filters to Y.js:', newFilters);
+    console.log(`[Filter Sync ${role}] Syncing local filters to Y.js:`, newFilters);
     lastUpdateSourceRef.current = 'local';
 
     const filtersMap = filtersMapRef.current;
@@ -118,10 +120,10 @@ export function useYjsFilterSync({
       if (value !== undefined && value !== null) {
         // For arrays, create a new array to ensure proper Y.js sync
         if (Array.isArray(value)) {
-          console.log(`[Filter Sync] Setting array key "${key}":`, value);
+          console.log(`[Filter Sync ${role}] Setting array key "${key}":`, value);
           filtersMap.set(key, [...value]);
         } else {
-          console.log(`[Filter Sync] Setting scalar key "${key}":`, value);
+          console.log(`[Filter Sync ${role}] Setting scalar key "${key}":`, value);
           filtersMap.set(key, value);
         }
         currentKeys.delete(key); // Mark as handled
@@ -130,19 +132,19 @@ export function useYjsFilterSync({
 
     // Remove keys that are no longer in the filters
     currentKeys.forEach(key => {
-      console.log(`[Filter Sync] Removing key "${key}"`);
+      console.log(`[Filter Sync ${role}] Removing key "${key}"`);
       filtersMap.delete(key);
     });
 
     // Set metadata about the update
     if (doc) {
       const metadataMap = doc.getMap('filterMetadata');
-      metadataMap.set('lastUpdatedBy', 'shopper');
+      metadataMap.set('lastUpdatedBy', role);
       metadataMap.set('lastUpdatedAt', Date.now());
       metadataMap.set('shopperId', shopperId);
-      console.log('[Filter Sync] Updated metadata for shopper:', shopperId);
+      console.log(`[Filter Sync ${role}] Updated metadata for ${role}:`, shopperId);
     }
-  }, [enabled, shopperId, doc]);
+  }, [enabled, shopperId, doc, role]);
 
   // Sync local filter changes to Y.js when filters change
   useEffect(() => {
