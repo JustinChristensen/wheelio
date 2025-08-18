@@ -5,7 +5,8 @@ import WebSocket from 'ws';
 const { setupWSConnection } = require('@y/websocket-server/utils')
 
 const collaborationWebSocket: FastifyPluginAsync = async function (fastify) {
-  fastify.get('/ws/calls/collaboration/:shopperId', { websocket: true }, async (socket: WebSocket, req) => {
+  fastify.get('/ws/collaboration/:shopperId', { websocket: true }, async (socket: WebSocket, req) => {
+    console.log('Foo bar baz');
     const { shopperId } = req.params as { shopperId: string };
     // Pass the shopperId as the document name to Y.js
     setupWSConnection(socket, req, { docName: shopperId });

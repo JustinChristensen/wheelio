@@ -14,6 +14,17 @@ export function useYjsCollaboration({ shopperId, enabled }: UseYjsCollaborationO
 
   useEffect(() => {
     if (!enabled || !shopperId) {
+      // Clean up existing connection if disabled
+      if (docRef.current) {
+        console.log('Y.js collaboration disabled, cleaning up...');
+        if (providerRef.current) {
+          providerRef.current.destroy();
+          providerRef.current = null;
+        }
+        docRef.current.destroy();
+        docRef.current = null;
+        setIsConnected(false);
+      }
       return;
     }
 
@@ -22,7 +33,8 @@ export function useYjsCollaboration({ shopperId, enabled }: UseYjsCollaborationO
     docRef.current = doc;
 
     // Create WebSocket provider
-    const wsUrl = `ws://localhost:4200/api/ws/calls/collaboration`;
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsUrl = `${protocol}//${window.location.hostname}:4200/api/ws/collaboration`;
     const provider = new WebsocketProvider(wsUrl, shopperId, doc);
     providerRef.current = provider;
 
@@ -37,7 +49,7 @@ export function useYjsCollaboration({ shopperId, enabled }: UseYjsCollaborationO
       setIsConnected(false);
     });
 
-    provider.on('connection-error', (error: Event) => {
+    provider.on('connection-error', (error: Error) => {
       console.error('Y.js WebSocket connection error:', error);
       setIsConnected(false);
     });
@@ -61,9 +73,12 @@ export function useYjsCollaboration({ shopperId, enabled }: UseYjsCollaborationO
     console.log('Y.js document created and connected for shopper:', shopperId);
 
     return () => {
-      console.log('Cleaning up Y.js collaboration for shopper:', shopperId);
-      provider.destroy();
-      doc.destroy();
+      if (provider) {
+        provider.destroy();
+      }
+      if (doc) {
+        doc.destroy();
+      }
       docRef.current = null;
       providerRef.current = null;
       setIsConnected(false);

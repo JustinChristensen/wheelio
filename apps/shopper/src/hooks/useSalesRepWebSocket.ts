@@ -61,6 +61,17 @@ export function useSalesRepWebSocket(salesRepId: string): UseSalesRepWebSocketRe
     enabled: collaborationStatus === 'accepted'
   });
 
+  // Collaboration cleanup function
+  const cleanupCollaboration = useCallback(() => {
+    if (yjsCollaboration.provider) {
+      console.log('Sales Rep - Cleaning up Y.js collaboration...');
+      yjsCollaboration.provider.destroy();
+    }
+    if (yjsCollaboration.doc) {
+      yjsCollaboration.doc.destroy();
+    }
+  }, [yjsCollaboration.provider, yjsCollaboration.doc]);
+
   // Initialize WebRTC with media detection
   const initializeWebRTC = useCallback(async (): Promise<RTCPeerConnection | null> => {
     try {
@@ -190,6 +201,12 @@ export function useSalesRepWebSocket(salesRepId: string): UseSalesRepWebSocketRe
   }, [salesRepId, isMediaReady, initializeWebRTC]);
 
   const releaseCall = useCallback((shopperId: string) => {
+    // Clean up collaboration first if active
+    if (collaborationStatus === 'accepted') {
+      console.log('Sales Rep - Ending collaboration before call release...');
+      cleanupCollaboration();
+    }
+    
     if (socketRef.current?.readyState === WebSocket.OPEN) {
       socketRef.current.send(JSON.stringify({
         type: 'release_call',
@@ -217,7 +234,7 @@ export function useSalesRepWebSocket(salesRepId: string): UseSalesRepWebSocketRe
     }
     
     setIsMediaReady(false);
-  }, [salesRepId]);
+  }, [salesRepId, collaborationStatus, cleanupCollaboration]);
 
   const requestCollaboration = useCallback((shopperId: string) => {
     if (socketRef.current?.readyState === WebSocket.OPEN) {
@@ -398,6 +415,16 @@ export function useSalesRepWebSocket(salesRepId: string): UseSalesRepWebSocketRe
         setConnectionStatus('disconnected');
         socketRef.current = null; // Clear the ref so reconnection can happen
         
+        // Clean up collaboration if active
+        if (collaborationStatus === 'accepted') {
+          console.log('Sales Rep - WebSocket closed, cleaning up collaboration...');
+          cleanupCollaboration();
+        }
+        
+        // Reset collaboration state
+        setCollaborationStatus('none');
+        setCollaborationError(null);
+        
         // Attempt to reconnect after a delay
         reconnectTimeoutRef.current = setTimeout(() => {
           connectWebSocket();
@@ -419,7 +446,7 @@ export function useSalesRepWebSocket(salesRepId: string): UseSalesRepWebSocketRe
         clearTimeout(reconnectTimeoutRef.current);
       }
     };
-  }, [salesRepId]); // Remove peerConnection dependency since it's now a ref
+  }, [salesRepId, cleanupCollaboration, collaborationStatus]); // Remove peerConnection dependency since it's now a ref
 
   // Separate useEffect for WebRTC cleanup
   useEffect(() => {

@@ -78,6 +78,17 @@ export const CallQueueProvider: React.FC<CallQueueProviderProps> = ({ children }
     enabled: callState.collaborationStatus === 'accepted'
   });
 
+  // Collaboration cleanup function
+  const cleanupCollaboration = useCallback(() => {
+    if (yjsCollaboration.provider) {
+      console.log('Cleaning up Y.js collaboration...');
+      yjsCollaboration.provider.destroy();
+    }
+    if (yjsCollaboration.doc) {
+      yjsCollaboration.doc.destroy();
+    }
+  }, [yjsCollaboration.provider, yjsCollaboration.doc]);
+
   // Keep ref in sync with state
   useEffect(() => {
     callStateRef.current = callState;
@@ -408,9 +419,20 @@ export const CallQueueProvider: React.FC<CallQueueProviderProps> = ({ children }
       ws.onclose = (event) => {
         wsRef.current = null;
         
+        // Clean up collaboration if active
+        if (callStateRef.current.collaborationStatus === 'accepted') {
+          console.log('Shopper - WebSocket closed, cleaning up collaboration...');
+          cleanupCollaboration();
+        }
+        
         // Only attempt reconnect if we were previously connected and it wasn't a manual disconnect
         if (callStateRef.current.status !== 'disconnected' && reconnectAttempts < maxReconnectAttempts) {
-          setCallState(prev => ({ ...prev, status: 'connecting' }));
+          setCallState(prev => ({ 
+            ...prev, 
+            status: 'connecting',
+            collaborationStatus: 'none',
+            collaborationRequest: undefined
+          }));
           const delay = Math.min(1000 * Math.pow(2, reconnectAttempts), 10000); // Exponential backoff
           
           reconnectTimeoutRef.current = setTimeout(() => {
@@ -422,7 +444,9 @@ export const CallQueueProvider: React.FC<CallQueueProviderProps> = ({ children }
             ...prev, 
             status: 'disconnected',
             position: undefined,
-            assignedSalesRepId: undefined
+            assignedSalesRepId: undefined,
+            collaborationStatus: 'none',
+            collaborationRequest: undefined
           }));
         }
       };
@@ -442,10 +466,15 @@ export const CallQueueProvider: React.FC<CallQueueProviderProps> = ({ children }
         error: 'Failed to connect to call service'
       }));
     }
-  }, [reconnectAttempts, generateShopperId, handleSdpOffer]);
+  }, [reconnectAttempts, generateShopperId, handleSdpOffer, cleanupCollaboration]);
 
   const disconnect = useCallback(() => {
     const currentShopperId = callStateRef.current.shopperId;
+    
+    // Clean up collaboration first if active
+    if (callStateRef.current.collaborationStatus === 'accepted') {
+      cleanupCollaboration();
+    }
     
     if (wsRef.current && currentShopperId) {
       // Send leave_queue message before closing
@@ -458,10 +487,16 @@ export const CallQueueProvider: React.FC<CallQueueProviderProps> = ({ children }
     cleanup();
     setCallState({ status: 'disconnected', collaborationStatus: 'none' });
     setReconnectAttempts(0);
-  }, [cleanup]);
+  }, [cleanup, cleanupCollaboration]);
 
   const endCall = useCallback(() => {
     const currentShopperId = callStateRef.current.shopperId;
+    
+    // Clean up collaboration first if active
+    if (callStateRef.current.collaborationStatus === 'accepted') {
+      console.log('Ending collaboration before call termination...');
+      cleanupCollaboration();
+    }
     
     // Clean up WebRTC connection
     if (peerConnectionRef.current) {
@@ -501,7 +536,7 @@ export const CallQueueProvider: React.FC<CallQueueProviderProps> = ({ children }
     }));
     
     console.log('Call ended by shopper');
-  }, []);
+  }, [cleanupCollaboration]);
 
   // Collaboration functions
   const respondToCollaboration = useCallback((accepted: boolean) => {
@@ -532,8 +567,12 @@ export const CallQueueProvider: React.FC<CallQueueProviderProps> = ({ children }
   }, [respondToCollaboration]);
 
   const declineCollaboration = useCallback(() => {
+    // Clean up any existing collaboration state before declining
+    if (callStateRef.current.collaborationStatus === 'accepted') {
+      cleanupCollaboration();
+    }
     respondToCollaboration(false);
-  }, [respondToCollaboration]);
+  }, [respondToCollaboration, cleanupCollaboration]);
 
   // Cleanup on unmount
   useEffect(() => {
