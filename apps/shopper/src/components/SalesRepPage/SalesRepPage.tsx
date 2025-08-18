@@ -4,6 +4,7 @@ import { useSalesRepWebSocket } from '../../hooks/useSalesRepWebSocket';
 import { useYjsFilterSync } from '../../hooks/useYjsFilterSync';
 import ConnectionStatus from '../ConnectionStatus/ConnectionStatus';
 import CallQueueGrid from '../CallQueueGrid/CallQueueGrid';
+import ShopperPage from '../ShopperPage/ShopperPage';
 
 // For now, we'll use a hardcoded sales rep ID. In a real app, this would come from authentication
 const SALES_REP_ID = 'sales-rep-aij0c1sfo';
@@ -203,6 +204,28 @@ export function SalesRepPage() {
             onAnswerCall={handleAnswerCall}
           />
         </div>
+
+        {/* Shopper Page - Sales Rep View */}
+        {currentCall && (
+          <div className="mt-8 bg-white rounded-lg border border-gray-200 overflow-hidden">
+            <div className="bg-gray-50 px-6 py-3 border-b border-gray-200">
+              <h2 className="text-lg font-semibold text-gray-900">
+                Shopper View - {currentCall.shopperId.slice(-8)}
+              </h2>
+              <p className="text-sm text-gray-600">
+                You are viewing and can interact with the shopper's car browsing experience
+              </p>
+            </div>
+            <div className="h-[600px]">
+              <ShopperPage
+                impersonateShopperId={currentCall.shopperId}
+                isCollaborationActive={collaborationStatus === 'accepted'}
+                yjsDoc={yjsDoc || undefined}
+                isYjsConnected={isYjsConnected}
+              />
+            </div>
+          </div>
+        )}
       </div>
     </main>
   );
