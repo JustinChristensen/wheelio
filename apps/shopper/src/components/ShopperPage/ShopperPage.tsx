@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import FilterSidebar from '../FilterSidebar/FilterSidebar';
 import CarGrid from '../CarGrid/CarGrid';
 import AISalesAgent from '../AISalesAgent/AISalesAgent';
@@ -23,7 +23,38 @@ function ShopperPageContent() {
   const { cars, loading, error } = useCarData();
   
   // Call queue for collaboration features - now from context
-  const { callState, acceptCollaboration, declineCollaboration } = useCallQueue();
+  const { 
+    callState, 
+    acceptCollaboration, 
+    declineCollaboration,
+    yjsDoc,
+    isYjsConnected
+  } = useCallQueue();
+
+  // Test Y.js functionality when connected
+  useEffect(() => {
+    if (yjsDoc && isYjsConnected && callState.collaborationStatus === 'accepted') {
+      const testMap = yjsDoc.getMap('test');
+      
+      // Add observer for changes
+      const observer = (event: { changes: { keys: Map<string, { action: string }> } }) => {
+        console.log('Shopper - Y.js test map changed:', event.changes.keys);
+        event.changes.keys.forEach((change: { action: string }, key: string) => {
+          if (change.action === 'add' || change.action === 'update') {
+            console.log(`Shopper - Key "${key}" ${change.action}ed with value:`, testMap.get(key));
+          }
+        });
+      };
+      
+      testMap.observe(observer);
+      
+      console.log('Shopper - Y.js document connected for shopper:', callState.shopperId);
+      
+      return () => {
+        testMap.unobserve(observer);
+      };
+    }
+  }, [yjsDoc, isYjsConnected, callState.collaborationStatus, callState.shopperId]);
 
   return (
     <main className="flex-1 flex overflow-hidden h-full">
@@ -37,7 +68,20 @@ function ShopperPageContent() {
       </div>
 
       {/* Car Grid - Scrollable Center */}
-      <div className="flex-1 overflow-auto h-full">
+      <div className="flex-1 overflow-auto h-full relative">
+        {/* Y.js Collaboration Status */}
+        {callState.collaborationStatus === 'accepted' && (
+          <div className="absolute top-4 right-4 z-10">
+            <div className={`px-3 py-2 rounded-lg shadow-lg text-sm font-medium ${
+              isYjsConnected 
+                ? 'bg-green-100 text-green-800 border border-green-200' 
+                : 'bg-orange-100 text-orange-800 border border-orange-200'
+            }`}>
+              {isYjsConnected ? '🔗 Collaboration Active' : '⏳ Connecting...'}
+            </div>
+          </div>
+        )}
+        
         <CarGrid 
           filters={filters} 
           cars={cars}

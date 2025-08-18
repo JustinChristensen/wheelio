@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { useSalesRepWebSocket } from '../../hooks/useSalesRepWebSocket';
 import ConnectionStatus from '../ConnectionStatus/ConnectionStatus';
 import CallQueueGrid from '../CallQueueGrid/CallQueueGrid';
@@ -18,8 +19,41 @@ export function SalesRepPage() {
     isBusy,
     requestCollaboration,
     collaborationStatus,
-    collaborationError
+    collaborationError,
+    // Y.js collaboration
+    yjsDoc,
+    isYjsConnected
   } = useSalesRepWebSocket(SALES_REP_ID);
+
+  // Test Y.js functionality when connected
+  useEffect(() => {
+    if (yjsDoc && isYjsConnected) {
+      const testMap = yjsDoc.getMap('test');
+      
+      // Add observer for changes
+      const observer = (event: { changes: { keys: Map<string, { action: string }> } }) => {
+        console.log('Sales Rep - Y.js test map changed:', event.changes.keys);
+        event.changes.keys.forEach((change: { action: string }, key: string) => {
+          if (change.action === 'add' || change.action === 'update') {
+            console.log(`Sales Rep - Key "${key}" ${change.action}ed with value:`, testMap.get(key));
+          }
+        });
+      };
+      
+      testMap.observe(observer);
+      
+      // Set sales rep test data
+      const timestamp = Date.now();
+      testMap.set('lastUpdate', timestamp);
+      testMap.set('updatedBy', 'salesRep');
+      
+      console.log('Sales Rep - Y.js document connected for shopper:', currentCall?.shopperId);
+      
+      return () => {
+        testMap.unobserve(observer);
+      };
+    }
+  }, [yjsDoc, isYjsConnected, currentCall?.shopperId]);
 
   const handleAnswerCall = (shopperId: string) => {
     if (isBusy) {
@@ -63,7 +97,7 @@ export function SalesRepPage() {
                     Shopper {currentCall.shopperId.slice(-8)} • Connected at {new Date(currentCall.connectedAt).toLocaleTimeString()}
                   </p>
                   {collaborationStatus !== 'none' && (
-                    <div className="mt-2">
+                    <div className="mt-2 space-y-2">
                       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                         collaborationStatus === 'pending' ? 'bg-yellow-100 text-yellow-800' :
                         collaborationStatus === 'accepted' ? 'bg-green-100 text-green-800' :
@@ -72,6 +106,15 @@ export function SalesRepPage() {
                       }`}>
                         Collaboration: {collaborationStatus}
                       </span>
+                      {collaborationStatus === 'accepted' && (
+                        <div className="flex items-center space-x-2">
+                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                            isYjsConnected ? 'bg-blue-100 text-blue-800' : 'bg-orange-100 text-orange-800'
+                          }`}>
+                            Y.js: {isYjsConnected ? 'Connected' : 'Connecting...'}
+                          </span>
+                        </div>
+                      )}
                     </div>
                   )}
                   {collaborationError && (

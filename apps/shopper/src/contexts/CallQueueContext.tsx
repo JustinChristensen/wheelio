@@ -1,5 +1,8 @@
 import React, { createContext, useContext, useState, useRef, useEffect, useCallback, ReactNode } from 'react';
 import { detectMediaCapabilities } from '../utils/media-detection';
+import { useYjsCollaboration } from '../hooks/useYjsCollaboration';
+import * as Y from 'yjs';
+import { WebsocketProvider } from 'y-websocket';
 
 export interface CallQueueState {
   status: 'disconnected' | 'connecting' | 'in-queue' | 'connected-to-rep' | 'error';
@@ -42,6 +45,10 @@ interface CallQueueContextType {
   declineCollaboration: () => void;
   isConnected: boolean;
   peerConnection: RTCPeerConnection | null;
+  // Y.js collaboration
+  yjsDoc: Y.Doc | null;
+  yjsProvider: WebsocketProvider | null;
+  isYjsConnected: boolean;
 }
 
 const CallQueueContext = createContext<CallQueueContextType | undefined>(undefined);
@@ -64,6 +71,12 @@ export const CallQueueProvider: React.FC<CallQueueProviderProps> = ({ children }
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [reconnectAttempts, setReconnectAttempts] = useState(0);
   const maxReconnectAttempts = 5;
+
+  // Y.js collaboration hook
+  const yjsCollaboration = useYjsCollaboration({
+    shopperId: callState.shopperId || '',
+    enabled: callState.collaborationStatus === 'accepted'
+  });
 
   // Keep ref in sync with state
   useEffect(() => {
@@ -535,7 +548,11 @@ export const CallQueueProvider: React.FC<CallQueueProviderProps> = ({ children }
     acceptCollaboration,
     declineCollaboration,
     isConnected: callState.status !== 'disconnected' && callState.status !== 'error',
-    peerConnection: peerConnectionRef.current
+    peerConnection: peerConnectionRef.current,
+    // Y.js collaboration
+    yjsDoc: yjsCollaboration.doc,
+    yjsProvider: yjsCollaboration.provider,
+    isYjsConnected: yjsCollaboration.isConnected
   };
 
   return (

@@ -1,5 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { detectMediaCapabilities } from '../utils/media-detection';
+import { useYjsCollaboration } from './useYjsCollaboration';
+import * as Y from 'yjs';
+import { WebsocketProvider } from 'y-websocket';
 
 export interface CallQueueSummary {
   shopperId: string;
@@ -24,6 +27,10 @@ interface UseSalesRepWebSocketReturn {
   requestCollaboration: (shopperId: string) => void;
   collaborationStatus: 'none' | 'pending' | 'accepted' | 'rejected' | 'ended';
   collaborationError: string | null;
+  // Y.js collaboration
+  yjsDoc: Y.Doc | null;
+  yjsProvider: WebsocketProvider | null;
+  isYjsConnected: boolean;
 }
 
 export function useSalesRepWebSocket(salesRepId: string): UseSalesRepWebSocketReturn {
@@ -47,6 +54,12 @@ export function useSalesRepWebSocket(salesRepId: string): UseSalesRepWebSocketRe
   const socketRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const currentCallRef = useRef<CallQueueSummary | null>(null);
+
+  // Y.js collaboration hook
+  const yjsCollaboration = useYjsCollaboration({
+    shopperId: currentCall?.shopperId || '',
+    enabled: collaborationStatus === 'accepted'
+  });
 
   // Initialize WebRTC with media detection
   const initializeWebRTC = useCallback(async (): Promise<RTCPeerConnection | null> => {
@@ -438,6 +451,10 @@ export function useSalesRepWebSocket(salesRepId: string): UseSalesRepWebSocketRe
     // Collaboration features
     requestCollaboration,
     collaborationStatus,
-    collaborationError
+    collaborationError,
+    // Y.js collaboration
+    yjsDoc: yjsCollaboration.doc,
+    yjsProvider: yjsCollaboration.provider,
+    isYjsConnected: yjsCollaboration.isConnected
   };
 }
