@@ -7,8 +7,12 @@ import CallQueueGrid from '../CallQueueGrid/CallQueueGrid';
 import ShopperPage from '../ShopperPage/ShopperPage';
 import SalesRepDrawer from '../SalesRepDrawer/SalesRepDrawer';
 
-// For now, we'll use a hardcoded sales rep ID. In a real app, this would come from authentication
-const SALES_REP_ID = 'sales-rep-aij0c1sfo';
+// Generate a random sales rep ID in the format 'sales-rep-xxxxxxxxx' on every reload
+function generateSalesRepId() {
+  const randomStr = Math.random().toString(36).substring(2, 11);
+  return `sales-rep-${randomStr}`;
+}
+const SALES_REP_ID = generateSalesRepId();
 
 export function SalesRepPage() {
   // Filter state for sales rep (will be synced with shopper)
