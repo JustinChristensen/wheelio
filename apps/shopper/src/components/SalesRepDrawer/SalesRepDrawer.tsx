@@ -12,18 +12,13 @@ interface CallQueueSummary {
   hasMicrophone: boolean;
 }
 
-interface CurrentCall {
-  shopperId: string;
-  connectedAt: number;
-}
-
 interface SalesRepDrawerProps {
   salesRepId: string;
   queue: CallQueueSummary[];
   isConnected: boolean;
   connectionStatus: 'connecting' | 'connected' | 'disconnected' | 'error';
   error: string | null;
-  currentCall: CurrentCall | null;
+  currentCall: CallQueueSummary | null;
   isBusy: boolean;
   collaborationStatus: string;
   collaborationError: string | null;
@@ -50,6 +45,7 @@ export function SalesRepDrawer({
   onRequestCollaboration,
   onReleaseCall,
 }: SalesRepDrawerProps) {
+  // Default to expanded if there's an active call so release button is visible
   const [isExpanded, setIsExpanded] = useState(false);
 
   const toggleDrawer = () => {
