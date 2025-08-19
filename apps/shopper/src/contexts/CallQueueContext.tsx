@@ -251,10 +251,7 @@ export const CallQueueProvider: React.FC<CallQueueProviderProps> = ({ children, 
       // Detect media capabilities before joining queue
       const mediaCapabilities = await detectMediaCapabilities();
       
-      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      const wsUrl = `${protocol}//${window.location.hostname}:4200/api/ws/call`;
-      
-      const ws = new WebSocket(wsUrl);
+      const ws = new WebSocket('/api/ws/call');
       wsRef.current = ws;
 
       ws.onopen = () => {

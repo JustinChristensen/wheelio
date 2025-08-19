@@ -266,10 +266,7 @@ export function useSalesRepWebSocket(salesRepId: string): UseSalesRepWebSocketRe
       setConnectionStatus('connecting');
       setError(null);
 
-      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      const wsUrl = `${protocol}//${window.location.hostname}:4200/api/ws/calls/monitor`;
-
-      const socket = new WebSocket(wsUrl);
+      const socket = new WebSocket('/api/ws/calls/monitor');
       socketRef.current = socket;
 
       socket.onopen = () => {

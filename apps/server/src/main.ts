@@ -5,7 +5,7 @@ import { app } from './app/app';
 
 // Load environment variables from env directory
 config({
-  path: path.resolve(process.cwd(), 'env'),
+  path: path.join(process.cwd(), 'env'),
   pattern: '.env[.node_env][.local]'
 });
 
@@ -25,7 +25,5 @@ server.listen({ port, host }, (err) => {
   if (err) {
     server.log.error(err);
     process.exit(1);
-  } else {
-    console.log(`[ ready ] http://${host}:${port}`);
-  }
+  } 
 });

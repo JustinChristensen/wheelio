@@ -33,9 +33,7 @@ export function useYjsCollaboration({ shopperId, enabled }: UseYjsCollaborationO
     docRef.current = doc;
 
     // Create WebSocket provider
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsUrl = `${protocol}//${window.location.hostname}:4200/api/ws/collaboration`;
-    const provider = new WebsocketProvider(wsUrl, shopperId, doc);
+    const provider = new WebsocketProvider('/api/ws/collaboration', shopperId, doc);
     providerRef.current = provider;
 
     // Connection event handlers

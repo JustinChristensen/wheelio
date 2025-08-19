@@ -13,14 +13,12 @@ export default defineConfig(() => ({
     proxy: {
       '/api': {
         target: 'http://localhost:3000',
-        changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api/, ''),
+        changeOrigin: true
       },
       '/api/ws': {
         target: 'http://localhost:3000',
         changeOrigin: true,
-        ws: true,
-        rewrite: (path) => path.replace(/^\/api/, ''),
+        ws: true
       },
     },
   },
@@ -34,7 +32,7 @@ export default defineConfig(() => ({
   //  plugins: [ nxViteTsPaths() ],
   // },
   build: {
-    outDir: '../../dist/apps/shopper',
+    outDir: '../../dist/apps/server/public',
     emptyOutDir: true,
     reportCompressedSize: true,
     commonjsOptions: {
