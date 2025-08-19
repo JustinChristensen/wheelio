@@ -1,16 +1,26 @@
 import { useEffect, useRef, useState } from 'react';
 import * as Y from 'yjs';
 import { WebsocketProvider } from 'y-websocket';
+import type { Awareness } from 'y-protocols/awareness';
 
 interface UseYjsCollaborationOptions {
   shopperId: string;
   enabled: boolean;
 }
 
+export interface CursorPosition {
+  x: number;
+  y: number;
+  color: string;
+  role: 'shopper' | 'salesRep';
+  timestamp: number;
+}
+
 export function useYjsCollaboration({ shopperId, enabled }: UseYjsCollaborationOptions) {
   const [isConnected, setIsConnected] = useState(false);
   const docRef = useRef<Y.Doc | null>(null);
   const providerRef = useRef<WebsocketProvider | null>(null);
+  const awarenessRef = useRef<Awareness | null>(null);
 
   useEffect(() => {
     if (!enabled || !shopperId) {
@@ -23,6 +33,7 @@ export function useYjsCollaboration({ shopperId, enabled }: UseYjsCollaborationO
         }
         docRef.current.destroy();
         docRef.current = null;
+        awarenessRef.current = null;
         setIsConnected(false);
       }
       return;
@@ -35,6 +46,10 @@ export function useYjsCollaboration({ shopperId, enabled }: UseYjsCollaborationO
     // Create WebSocket provider
     const provider = new WebsocketProvider('/api/ws/collaboration', shopperId, doc);
     providerRef.current = provider;
+    
+    // Get awareness instance from provider
+    const awareness = provider.awareness;
+    awarenessRef.current = awareness;
 
     // Connection event handlers
     provider.on('status', (event: { status: string }) => {
@@ -55,6 +70,10 @@ export function useYjsCollaboration({ shopperId, enabled }: UseYjsCollaborationO
     console.log('Y.js document created and connected for shopper:', shopperId);
 
     return () => {
+      // Clean up awareness first
+      if (awareness) {
+        awareness.destroy();
+      }
       if (provider) {
         provider.destroy();
       }
@@ -63,6 +82,7 @@ export function useYjsCollaboration({ shopperId, enabled }: UseYjsCollaborationO
       }
       docRef.current = null;
       providerRef.current = null;
+      awarenessRef.current = null;
       setIsConnected(false);
     };
   }, [shopperId, enabled]);
@@ -70,6 +90,7 @@ export function useYjsCollaboration({ shopperId, enabled }: UseYjsCollaborationO
   return {
     doc: docRef.current,
     provider: providerRef.current,
+    awareness: awarenessRef.current,
     isConnected,
   };
 }

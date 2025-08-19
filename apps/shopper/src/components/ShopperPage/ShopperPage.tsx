@@ -3,6 +3,7 @@ import FilterSidebar from '../FilterSidebar/FilterSidebar';
 import CarGrid from '../CarGrid/CarGrid';
 import AISalesAgent from '../AISalesAgent/AISalesAgent';
 import CollaborationRequestModal from '../CollaborationRequestModal/CollaborationRequestModal';
+import { CollaborationAwareContainer } from '../CollaborationAwareContainer';
 import { CarFilters } from 'car-data';
 import { useCarData } from '../../hooks/useCarData';
 import { useYjsFilterSync } from '../../hooks/useYjsFilterSync';
@@ -48,6 +49,7 @@ function ShopperPageContent({
   const collaborationStatus = isCollaborationActive ? 'accepted' : callQueueContext.callState.collaborationStatus || 'none';
   const yjsDoc = externalYjsDoc || callQueueContext.yjsDoc;
   const isYjsConnected = externalIsYjsConnected ?? callQueueContext.isYjsConnected;
+  const yjsAwareness = callQueueContext.yjsAwareness;
 
   // Y.js filter synchronization for real-time collaboration
   const { isConnected: isFilterSyncConnected } = useYjsFilterSync({
@@ -84,66 +86,73 @@ function ShopperPageContent({
   }, [yjsDoc, isYjsConnected, collaborationStatus, shopperId]);
 
   return (
-    <main className="flex-1 flex overflow-hidden h-full">
-      {/* Filter Sidebar */}
-      <div className="w-80 bg-white border-r border-gray-200 flex-shrink-0 h-full">
-        <FilterSidebar 
-          filters={filters} 
-          onFiltersChange={setFilters}
-          cars={cars}
-        />
-      </div>
+    <CollaborationAwareContainer
+      awareness={yjsAwareness}
+      enabled={collaborationStatus === 'accepted' && isYjsConnected}
+      role={impersonateShopperId ? 'salesRep' : 'shopper'}
+      className="flex-1 flex overflow-hidden h-full"
+    >
+      <main className="flex-1 flex overflow-hidden h-full">
+        {/* Filter Sidebar */}
+        <div className="w-80 bg-white border-r border-gray-200 flex-shrink-0 h-full">
+          <FilterSidebar 
+            filters={filters} 
+            onFiltersChange={setFilters}
+            cars={cars}
+          />
+        </div>
 
-      {/* Car Grid - Scrollable Center */}
-      <div className="flex-1 overflow-auto h-full relative">
-        {/* Y.js Collaboration Status */}
-        {collaborationStatus === 'accepted' && (
-          <div className="absolute top-4 right-4 z-10">
-            <div className={`px-3 py-2 rounded-lg shadow-lg text-sm font-medium ${
-              isYjsConnected && isFilterSyncConnected
-                ? 'bg-green-100 text-green-800 border border-green-200' 
-                : 'bg-orange-100 text-orange-800 border border-orange-200'
-            }`}>
-              {isYjsConnected && isFilterSyncConnected 
-                ? `🔗 Collaboration Active${impersonateShopperId ? ' (Sales Rep View)' : ''}` 
-                : '⏳ Connecting...'}
+        {/* Car Grid - Scrollable Center */}
+        <div className="flex-1 overflow-auto h-full relative">
+          {/* Y.js Collaboration Status */}
+          {collaborationStatus === 'accepted' && (
+            <div className="absolute top-4 right-4 z-10">
+              <div className={`px-3 py-2 rounded-lg shadow-lg text-sm font-medium ${
+                isYjsConnected && isFilterSyncConnected
+                  ? 'bg-green-100 text-green-800 border border-green-200' 
+                  : 'bg-orange-100 text-orange-800 border border-orange-200'
+              }`}>
+                {isYjsConnected && isFilterSyncConnected 
+                  ? `🔗 Collaboration Active${impersonateShopperId ? ' (Sales Rep View)' : ''}` 
+                  : '⏳ Connecting...'}
+              </div>
             </div>
-          </div>
+          )}
+          
+          <CarGrid 
+            filters={filters} 
+            cars={cars}
+            loading={loading}
+            error={error}
+          />
+        </div>
+
+        {/* AI Sales Agent Drawer */}
+        <div className={`bg-white border-l border-gray-200 transition-all duration-300 ease-in-out ${
+          isAIDrawerOpen ? 'w-96' : 'w-0'
+        } flex-shrink-0 h-full relative`}>
+          <AISalesAgent 
+            isOpen={isAIDrawerOpen}
+            onToggle={() => setIsAIDrawerOpen(!isAIDrawerOpen)}
+            onFiltersUpdate={setFilters}
+            currentFilters={filters}
+            cars={cars}
+            isImpersonationMode={!!impersonateShopperId}
+          />
+        </div>
+
+        {/* Collaboration Request Modal - only show when not in impersonation mode */}
+        {!impersonateShopperId && (
+          <CollaborationRequestModal
+            isOpen={!!(callQueueContext.callState.collaborationRequest && callQueueContext.callState.collaborationStatus === 'pending')}
+            salesRepName={callQueueContext.callState.collaborationRequest?.salesRepName || ''}
+            salesRepId={callQueueContext.callState.collaborationRequest?.salesRepId || ''}
+            onAccept={callQueueContext.acceptCollaboration}
+            onDecline={callQueueContext.declineCollaboration}
+          />
         )}
-        
-        <CarGrid 
-          filters={filters} 
-          cars={cars}
-          loading={loading}
-          error={error}
-        />
-      </div>
-
-      {/* AI Sales Agent Drawer */}
-      <div className={`bg-white border-l border-gray-200 transition-all duration-300 ease-in-out ${
-        isAIDrawerOpen ? 'w-96' : 'w-0'
-      } flex-shrink-0 h-full relative`}>
-        <AISalesAgent 
-          isOpen={isAIDrawerOpen}
-          onToggle={() => setIsAIDrawerOpen(!isAIDrawerOpen)}
-          onFiltersUpdate={setFilters}
-          currentFilters={filters}
-          cars={cars}
-          isImpersonationMode={!!impersonateShopperId}
-        />
-      </div>
-
-      {/* Collaboration Request Modal - only show when not in impersonation mode */}
-      {!impersonateShopperId && (
-        <CollaborationRequestModal
-          isOpen={!!(callQueueContext.callState.collaborationRequest && callQueueContext.callState.collaborationStatus === 'pending')}
-          salesRepName={callQueueContext.callState.collaborationRequest?.salesRepName || ''}
-          salesRepId={callQueueContext.callState.collaborationRequest?.salesRepId || ''}
-          onAccept={callQueueContext.acceptCollaboration}
-          onDecline={callQueueContext.declineCollaboration}
-        />
-      )}
-    </main>
+      </main>
+    </CollaborationAwareContainer>
   );
 }
 

@@ -3,6 +3,7 @@ import { detectMediaCapabilities } from '../utils/media-detection';
 import { useYjsCollaboration } from '../hooks/useYjsCollaboration';
 import * as Y from 'yjs';
 import { WebsocketProvider } from 'y-websocket';
+import type { Awareness } from 'y-protocols/awareness';
 
 export interface CallQueueState {
   status: 'disconnected' | 'connecting' | 'in-queue' | 'connected-to-rep' | 'error';
@@ -48,6 +49,7 @@ interface CallQueueContextType {
   // Y.js collaboration
   yjsDoc: Y.Doc | null;
   yjsProvider: WebsocketProvider | null;
+  yjsAwareness: Awareness | null;
   isYjsConnected: boolean;
 }
 
@@ -595,6 +597,7 @@ export const CallQueueProvider: React.FC<CallQueueProviderProps> = ({ children, 
     // Y.js collaboration
     yjsDoc: yjsCollaboration.doc,
     yjsProvider: yjsCollaboration.provider,
+    yjsAwareness: yjsCollaboration.awareness,
     isYjsConnected: yjsCollaboration.isConnected
   };
 

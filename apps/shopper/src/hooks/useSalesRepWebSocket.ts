@@ -3,6 +3,7 @@ import { detectMediaCapabilities } from '../utils/media-detection';
 import { useYjsCollaboration } from './useYjsCollaboration';
 import * as Y from 'yjs';
 import { WebsocketProvider } from 'y-websocket';
+import type { Awareness } from 'y-protocols/awareness';
 
 export interface CallQueueSummary {
   shopperId: string;
@@ -30,6 +31,7 @@ interface UseSalesRepWebSocketReturn {
   // Y.js collaboration
   yjsDoc: Y.Doc | null;
   yjsProvider: WebsocketProvider | null;
+  yjsAwareness: Awareness | null;
   isYjsConnected: boolean;
 }
 
@@ -479,6 +481,7 @@ export function useSalesRepWebSocket(salesRepId: string): UseSalesRepWebSocketRe
     // Y.js collaboration
     yjsDoc: yjsCollaboration.doc,
     yjsProvider: yjsCollaboration.provider,
+    yjsAwareness: yjsCollaboration.awareness,
     isYjsConnected: yjsCollaboration.isConnected
   };
 }
