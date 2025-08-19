@@ -32,6 +32,7 @@ export function SalesRepPage() {
     collaborationError,
     // Y.js collaboration
     yjsDoc,
+    yjsAwareness,
     isYjsConnected
   } = useSalesRepWebSocket(SALES_REP_ID);
 
@@ -106,6 +107,7 @@ export function SalesRepPage() {
             isCollaborationActive={collaborationStatus === 'accepted'}
             yjsDoc={yjsDoc || undefined}
             isYjsConnected={isYjsConnected}
+            yjsAwareness={yjsAwareness}
           />
           <SalesRepDrawer
             salesRepId={SALES_REP_ID}

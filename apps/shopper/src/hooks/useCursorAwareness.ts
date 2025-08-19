@@ -6,7 +6,7 @@ interface UseCursorAwarenessOptions {
   awareness: Awareness | null;
   enabled: boolean;
   role: 'shopper' | 'salesRep';
-  containerRef: React.RefObject<HTMLElement>;
+  containerRef: React.RefObject<HTMLElement | null>;
 }
 
 interface RemoteCursor {

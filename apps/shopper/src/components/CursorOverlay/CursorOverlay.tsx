@@ -1,5 +1,5 @@
 import React from 'react';
-import type { CursorPosition } from '../hooks/useYjsCollaboration';
+import type { CursorPosition } from '../../hooks/useYjsCollaboration';
 
 interface RemoteCursor {
   clientId: number;
@@ -8,7 +8,7 @@ interface RemoteCursor {
 
 interface CursorOverlayProps {
   cursors: RemoteCursor[];
-  containerRef: React.RefObject<HTMLElement>;
+  containerRef: React.RefObject<HTMLElement | null>;
 }
 
 export function CursorOverlay({ cursors, containerRef }: CursorOverlayProps) {

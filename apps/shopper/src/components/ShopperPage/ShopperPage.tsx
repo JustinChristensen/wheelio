@@ -9,6 +9,7 @@ import { useCarData } from '../../hooks/useCarData';
 import { useYjsFilterSync } from '../../hooks/useYjsFilterSync';
 import { CallQueueProvider, useCallQueue } from '../../contexts/CallQueueContext';
 import * as Y from 'yjs';
+import type { Awareness } from 'y-protocols/awareness';
 
 interface ShopperPageProps {
   /** When provided, the component will operate in "impersonation mode" for sales reps */
@@ -19,6 +20,8 @@ interface ShopperPageProps {
   yjsDoc?: Y.Doc;
   /** When in impersonation mode, the Y.js connection status */
   isYjsConnected?: boolean;
+  /** When in impersonation mode, the Y.js awareness instance */
+  yjsAwareness?: Awareness | null;
 }
 
 export function ShopperPage(props: ShopperPageProps = {}) {
@@ -33,7 +36,8 @@ function ShopperPageContent({
   impersonateShopperId, 
   isCollaborationActive, 
   yjsDoc: externalYjsDoc, 
-  isYjsConnected: externalIsYjsConnected 
+  isYjsConnected: externalIsYjsConnected,
+  yjsAwareness: externalYjsAwareness
 }: ShopperPageProps) {
   const [filters, setFilters] = useState<CarFilters>({});
   const [isAIDrawerOpen, setIsAIDrawerOpen] = useState(true);
@@ -49,7 +53,9 @@ function ShopperPageContent({
   const collaborationStatus = isCollaborationActive ? 'accepted' : callQueueContext.callState.collaborationStatus || 'none';
   const yjsDoc = externalYjsDoc || callQueueContext.yjsDoc;
   const isYjsConnected = externalIsYjsConnected ?? callQueueContext.isYjsConnected;
-  const yjsAwareness = callQueueContext.yjsAwareness;
+  
+  // For awareness, prefer the external one if provided (sales rep mode), otherwise use context
+  const yjsAwareness = externalYjsAwareness || callQueueContext.yjsAwareness;
 
   // Y.js filter synchronization for real-time collaboration
   const { isConnected: isFilterSyncConnected } = useYjsFilterSync({
